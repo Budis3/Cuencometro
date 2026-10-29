@@ -35,7 +35,7 @@
       position: relative;
     }
 
-    /* VÍDEO DE CÁMARA A PANTALLA COMPLETA */
+    /* VÍDEO DE CÁMARA TRASERA */
     #camera-video {
       position: absolute;
       top: 0;
@@ -47,7 +47,7 @@
       display: none;
     }
 
-    /* PANTALLA DE PERMISOS E INICIO */
+    /* MODAL DE PERMISOS E INICIO */
     #permission-modal {
       position: absolute;
       inset: 0;
@@ -114,7 +114,7 @@
       transform: scale(0.96);
     }
 
-    /* CONTENEDOR DE LA INTERFAZ */
+    /* CONTENEDOR PRINCIPAL */
     #app-container {
       position: relative;
       width: 100%;
@@ -132,7 +132,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%);
     }
 
     .badge-status {
@@ -161,11 +161,6 @@
       box-shadow: 0 0 10px var(--success);
     }
 
-    .top-controls {
-      display: flex;
-      gap: 0.5rem;
-    }
-
     .btn-icon {
       background: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(8px);
@@ -179,9 +174,6 @@
       display: flex;
       align-items: center;
       gap: 0.4rem;
-    }
-    .btn-icon:active {
-      background: rgba(255, 255, 255, 0.15);
     }
 
     /* 1. MODO BRÚJULA (PLANO EN LA MANO) */
@@ -254,7 +246,6 @@
       transform: translateY(-50%);
     }
 
-    /* Aguja Cuenca */
     .cuenca-needle {
       position: absolute;
       width: 100%;
@@ -357,6 +348,7 @@
       justify-content: center;
     }
 
+    /* Círculo estándar */
     .target-circle {
       width: 140px;
       height: 140px;
@@ -371,21 +363,26 @@
       box-shadow: 0 0 32px rgba(16, 185, 129, 0.9);
     }
 
-    .target-casas-svg {
-      width: 180px;
-      height: 180px;
-      fill: none;
-      stroke: var(--danger);
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
-      transition: stroke 0.15s, filter 0.15s;
+    /* Tu SVG de las Casas Colgadas integrado como máscara para cambio de color */
+    .target-casas-container {
+      width: 220px;
+      height: 280px;
+      background-color: var(--danger);
+      -webkit-mask-image: url('casas-colgadas.svg');
+      mask-image: url('casas-colgadas.svg');
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+      transition: background-color 0.15s, filter 0.15s;
     }
 
-    .target-casas-svg.on-target {
-      stroke: var(--success);
-      filter: drop-shadow(0 0 14px rgba(16, 185, 129, 0.95));
+    .target-casas-container.on-target {
+      background-color: var(--success);
+      filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.95));
     }
 
     .ar-status-text {
@@ -400,7 +397,7 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* BARRA INFERIOR DE DIAGNÓSTICO */
+    /* BARRA INFERIOR */
     .bottom-info {
       pointer-events: auto;
       padding: 0.75rem 1rem;
@@ -426,10 +423,10 @@
 </head>
 <body>
 
-  <!-- Vídeo para la Cámara Trasera en Modo Vertical -->
+  <!-- Elemento de Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal de Solicitud de Permisos -->
+  <!-- Modal de Permisos / Inicio -->
   <div id="permission-modal">
     <div class="modal-card">
       <div class="icon-cuenca">📍</div>
@@ -450,11 +447,9 @@
         <span id="target-status-label">Buscando...</span>
       </div>
 
-      <div class="top-controls">
-        <button class="btn-icon" id="toggle-reticle-btn">
-          <span id="reticle-mode-label">🏛️ Casas Colgadas</span>
-        </button>
-      </div>
+      <button class="btn-icon" id="toggle-reticle-btn">
+        <span id="reticle-mode-label">⭕ Círculo</span>
+      </button>
     </div>
 
     <!-- 1. MODO BRÚJULA (PLANO EN LA MANO) -->
@@ -484,32 +479,18 @@
       </div>
     </div>
 
-    <!-- 2. MODO AR / CÁMARA (VERTICAL) -->
+    <!-- 2. MODO CÁMARA (VERTICAL AL FRENTE) -->
     <div id="ar-mode">
       <div class="ar-compass-bar">
         <span>📍 Cuenca: <strong id="ar-diff-angle">0°</strong></span>
       </div>
 
       <div class="ar-reticle-container">
-        <!-- Retículo Círculo -->
-        <div class="target-circle" id="circle-reticle"></div>
+        <!-- Retículo A: Círculo tradicional -->
+        <div class="target-circle" id="circle-reticle" style="display: none;"></div>
 
-        <!-- Retículo SVG Casas Colgadas -->
-        <svg class="target-casas-svg" id="casas-reticle" viewBox="0 0 100 100" style="display: none;">
-          <path d="M 5,95 Q 30,85 45,65 T 75,55 L 95,50" />
-          <path d="M 45,65 L 45,95" />
-          <path d="M 60,60 L 60,95" />
-          <rect x="42" y="28" width="22" height="30" />
-          <polygon points="40,28 53,18 66,28" />
-          <rect x="37" y="38" width="5" height="12" />
-          <line x1="37" y1="50" x2="42" y2="50" />
-          <line x1="37" y1="44" x2="37" y2="48" />
-          <rect x="36" y="52" width="6" height="8" />
-          <line x1="48" y1="36" x2="52" y2="36" />
-          <line x1="56" y1="36" x2="60" y2="36" />
-          <line x1="48" y1="46" x2="52" y2="46" />
-          <line x1="56" y1="46" x2="60" y2="46" />
-        </svg>
+        <!-- Retículo B: Casas Colgadas SVG oficial -->
+        <div class="target-casas-container" id="casas-reticle"></div>
 
         <div class="ar-status-text" id="ar-guidance-text">Gira hacia Cuenca</div>
       </div>
@@ -539,7 +520,7 @@
 
     let currentHeading = 0;
     let isVertical = false;
-    let reticleMode = 'circle';
+    let reticleMode = 'casas'; // Ahora inicia directamente con las Casas Colgadas
     let invertOffset = (localStorage.getItem('cuenca_invert_180') === 'true') ? 180 : 0;
 
     const TOLERANCE_DEG = 9;
@@ -620,21 +601,19 @@
     function handleOrientation(e) {
       let rawHeading = null;
 
-      // iOS Safari (webkitCompassHeading proporciona el norte magnético horario directo)
+      // iOS Safari
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
         rawHeading = e.webkitCompassHeading;
       } 
-      // Android / Estándar W3C (alpha es antihorario, se normaliza a sentido horario)
+      // Android / W3C
       else if (e.alpha !== null) {
         rawHeading = (360 - e.alpha) % 360;
       }
 
       if (rawHeading === null) return;
 
-      // Aplicar compensación opcional de 180° si el hardware lee en polo invertido
       currentHeading = (rawHeading + invertOffset) % 360;
 
-      // Detección de postura: plano sobre mano (beta < 45) vs vertical (beta > 45)
       const beta = Math.abs(e.beta || 0);
       const wasVertical = isVertical;
       isVertical = beta > 45;
@@ -655,14 +634,14 @@
     }
 
     function actualizarBrujulaYVisor() {
-      // 1. Roseta cardinal: gira -currentHeading para que la N mire siempre al Norte físico
+      // 1. Roseta cardinal
       compassDial.style.transform = `rotate(${-currentHeading}deg)`;
 
-      // 2. Aguja a Cuenca: rota la diferencia angular exacta (Rumbo Cuenca - Rumbo Móvil)
+      // 2. Aguja a Cuenca
       const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
       cuencaNeedle.style.transform = `rotate(${needleAngle}deg)`;
 
-      // 3. Desvío relativo centrado entre -180° y +180°
+      // 3. Desvío relativo normalizado
       let diff = ((bearingToCuenca - currentHeading + 540) % 360) - 180;
       const isLookingAtCuenca = Math.abs(diff) <= TOLERANCE_DEG;
 
@@ -692,7 +671,7 @@
     // GPS
     function initGPS() {
       if (!navigator.geolocation) {
-        alert("Geolocalización no soportada en este navegador.");
+        alert("Geolocalización no soportada.");
         return;
       }
 
@@ -709,7 +688,6 @@
         },
         (err) => {
           console.warn("Aviso GPS:", err);
-          // Coordenadas fallback (Madrid) si no hay GPS activo
           userLat = 40.4168;
           userLon = -3.7038;
           bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
@@ -721,12 +699,11 @@
       );
     }
 
-    // BOTÓN DE ARRANQUE Y PERMISOS
+    // ARRANQUE Y PERMISOS
     startBtn.addEventListener('click', async () => {
       initGPS();
       await startCamera();
 
-      // iOS 13+ requiere pedir permiso explícito
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const res = await DeviceOrientationEvent.requestPermission();
@@ -739,7 +716,6 @@
           console.error(err);
         }
       } else {
-        // En Android escuchamos el sensor absoluto si existe
         if ('ondeviceorientationabsolute' in window) {
           window.addEventListener('deviceorientationabsolute', handleOrientation, true);
         } else {
@@ -750,18 +726,18 @@
       modal.style.display = 'none';
     });
 
-    // ALTERNAR RETÍCULO
+    // ALTERNAR VISOR ENTRE CASAS COLGADAS Y CÍRCULO
     toggleReticleBtn.addEventListener('click', () => {
-      if (reticleMode === 'circle') {
-        reticleMode = 'casas';
-        circleReticle.style.display = 'none';
-        casasReticle.style.display = 'block';
-        reticleModeLabel.textContent = "⭕ Círculo";
-      } else {
+      if (reticleMode === 'casas') {
         reticleMode = 'circle';
         casasReticle.style.display = 'none';
         circleReticle.style.display = 'block';
         reticleModeLabel.textContent = "🏛️ Casas Colgadas";
+      } else {
+        reticleMode = 'casas';
+        circleReticle.style.display = 'none';
+        casasReticle.style.display = 'block';
+        reticleModeLabel.textContent = "⭕ Círculo";
       }
     });
   </script>
