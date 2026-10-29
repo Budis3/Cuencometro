@@ -145,4 +145,270 @@ body {
 .dot {
   width: 9px;
   height: 9px;
-  border-radius: 50
+  border-radius: 50%;
+  background: var(--danger);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.dot.active {
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
+}
+
+.btn-icon {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  padding: 0.45rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* 1. MODO BRÚJULA (PLANO EN LA MANO) */
+#compass-mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  transition: opacity 0.3s;
+}
+
+.compass-container {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compass-bezel {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: radial-gradient(circle, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.5);
+}
+
+.compass-dial {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.08s linear;
+}
+
+.dial-mark {
+  position: absolute;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.dial-mark.north {
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--danger);
+  font-size: 1.15rem;
+}
+
+.dial-mark.east {
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+}
+
+.dial-mark.south {
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.dial-mark.west {
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+}
+
+.cuenca-needle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.08s linear;
+}
+
+.needle-shape {
+  width: 6px;
+  height: 210px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.needle-cuenca-head {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 90px solid #ef4444;
+  transition: border-bottom-color 0.2s;
+}
+
+.needle-tail {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 70px solid rgba(255, 255, 255, 0.2);
+}
+
+.needle-center-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.6);
+  border: 3px solid #1e293b;
+  z-index: 10;
+}
+
+.info-labels {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.target-city {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.target-distance {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* 2. MODO CÁMARA (VERTICAL AL FRENTE) */
+#ar-mode {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 0;
+  position: relative;
+}
+
+.ar-compass-bar {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.5rem 1.3rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ar-reticle-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Círculo estándar */
+.target-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 4px solid var(--danger);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.target-circle.on-target {
+  border-color: var(--success);
+  box-shadow: 0 0 32px rgba(16, 185, 129, 0.9);
+}
+
+/* Casas Colgadas SVG integrado como máscara para cambio de color */
+.target-casas-container {
+  width: 220px;
+  height: 280px;
+  background-color: var(--danger);
+  -webkit-mask-image: url('casas-colgadas.svg');
+  mask-image: url('casas-colgadas.svg');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+  transition: background-color 0.15s, filter 0.15s;
+}
+
+.target-casas-container.on-target {
+  background-color: var(--success);
+  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.95));
+}
+
+.ar-status-text {
+  margin-top: 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* BARRA INFERIOR */
+.bottom-info {
+  pointer-events: auto;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-flip {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
