@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #0b0f19;
-      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-bg: rgba(18, 24, 38, 0.88);
       --accent: #3b82f6;
       --danger: #ef4444;
       --success: #10b981;
@@ -35,7 +35,7 @@
       position: relative;
     }
 
-    /* CAPA DE CÁMARA (FONDO COMPLETO EN MODO VERTICAL) */
+    /* VÍDEO DE CÁMARA (NÍTIDO A PANTALLA COMPLETA) */
     #camera-video {
       position: absolute;
       top: 0;
@@ -45,6 +45,31 @@
       object-fit: cover;
       z-index: 1;
       display: none;
+    }
+
+    /* SIMULADOR DE ENTORNO URBANO SI NO HAY CÁMARA ACTIVA EN PC */
+    #sim-environment {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: none;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 60%, #020617 100%);
+      overflow: hidden;
+    }
+
+    .horizon-grid {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 45%;
+      background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 70%),
+                  linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+                  linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 40px 40px;
+      transform: perspective(300px) rotateX(60deg);
+      transform-origin: top center;
     }
 
     /* PANTALLA DE INICIO / PERMISOS */
@@ -57,27 +82,28 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 2rem;
+      padding: 1.5rem;
       text-align: center;
     }
 
     .modal-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 24px;
-      padding: 2.5rem 1.5rem;
+      padding: 2.2rem 1.6rem;
       max-width: 360px;
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     }
 
     .icon-cuenca {
-      font-size: 3rem;
-      margin-bottom: 1rem;
+      font-size: 2.8rem;
+      margin-bottom: 0.8rem;
     }
 
     .modal-card h1 {
@@ -89,32 +115,51 @@
 
     .modal-card p {
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       line-height: 1.4;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
     }
 
     .btn-primary {
       background: #2563eb;
       color: white;
       border: none;
-      padding: 0.9rem 1.8rem;
-      font-size: 1rem;
+      padding: 0.85rem 1.4rem;
+      font-size: 0.95rem;
       font-weight: 600;
       border-radius: 9999px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
       transition: all 0.2s;
     }
 
     .btn-primary:active {
-      transform: scale(0.96);
+      transform: scale(0.97);
     }
 
-    /* CONTENEDOR PRINCIPAL DE LA APP */
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 0.7rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+
+    /* CONTENEDOR PRINCIPAL */
     #app-container {
       position: relative;
       width: 100%;
@@ -125,25 +170,25 @@
       pointer-events: none;
     }
 
-    /* TOP BAR CON INFO Y SELECTOR */
+    /* TOP BAR */
     .top-bar {
       pointer-events: auto;
-      padding: 1rem;
+      padding: 0.8rem 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
     }
 
     .badge-status {
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(8px);
       padding: 0.4rem 0.8rem;
       border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       font-size: 0.8rem;
       font-weight: 500;
     }
@@ -153,27 +198,34 @@
       height: 8px;
       border-radius: 50%;
       background: var(--danger);
+      transition: background-color 0.2s, box-shadow 0.2s;
     }
     .dot.active {
       background: var(--success);
-      box-shadow: 0 0 8px var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .top-buttons {
+      display: flex;
+      gap: 0.5rem;
     }
 
     .btn-icon {
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       color: var(--text);
-      padding: 0.4rem 0.8rem;
+      padding: 0.4rem 0.75rem;
       border-radius: 9999px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.35rem;
     }
 
-    /* MODO BRÚJULA (PLANO EN LA MANO) */
+    /* MODO 1: BRÚJULA (PLANO EN LA PALMA) */
     #compass-mode {
       flex: 1;
       display: flex;
@@ -186,8 +238,8 @@
 
     .compass-container {
       position: relative;
-      width: 280px;
-      height: 280px;
+      width: 270px;
+      height: 270px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -198,54 +250,52 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      background: radial-gradient(circle, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.14);
+      background: radial-gradient(circle, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
+      box-shadow: 0 0 35px rgba(0, 0, 0, 0.6);
     }
 
     .compass-dial {
       position: absolute;
       width: 100%;
       height: 100%;
-      transition: transform 0.1s ease-out;
+      transition: transform 0.08s ease-out;
+      transform-origin: 50% 50%;
     }
 
     .dial-mark {
       position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
     }
 
     .dial-mark.north {
       color: var(--danger);
-      top: 8px;
-      font-size: 1.1rem;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.05rem;
     }
 
     .dial-mark.east {
       top: 50%;
-      right: 12px;
-      left: auto;
+      right: 14px;
       transform: translateY(-50%);
     }
 
     .dial-mark.south {
-      top: auto;
       bottom: 10px;
+      left: 50%;
       transform: translateX(-50%);
     }
 
     .dial-mark.west {
       top: 50%;
-      left: 12px;
+      left: 14px;
       transform: translateY(-50%);
     }
 
-    /* Aguja apuntando a Cuenca */
     .cuenca-needle {
       position: absolute;
       width: 100%;
@@ -253,12 +303,13 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      transition: transform 0.1s ease-out;
+      transition: transform 0.08s ease-out;
+      transform-origin: 50% 50%;
     }
 
     .needle-shape {
-      width: 6px;
-      height: 210px;
+      width: 8px;
+      height: 200px;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -270,8 +321,9 @@
       height: 0;
       border-left: 10px solid transparent;
       border-right: 10px solid transparent;
-      border-bottom: 90px solid #ef4444;
-      position: relative;
+      border-bottom: 90px solid var(--danger);
+      filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.5));
+      transition: border-bottom-color 0.15s;
     }
 
     .needle-tail {
@@ -279,7 +331,7 @@
       height: 0;
       border-left: 6px solid transparent;
       border-right: 6px solid transparent;
-      border-top: 70px solid rgba(255, 255, 255, 0.2);
+      border-top: 70px solid rgba(255, 255, 255, 0.25);
     }
 
     .needle-center-pin {
@@ -287,30 +339,26 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 22px;
-      height: 22px;
-      background: #fff;
+      width: 20px;
+      height: 20px;
+      background: #ffffff;
       border-radius: 50%;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
       border: 3px solid #1e293b;
       z-index: 10;
     }
 
     .info-labels {
-      margin-top: 2rem;
+      margin-top: 1.8rem;
       text-align: center;
     }
 
     .target-city {
-      font-size: 1.3rem;
+      font-size: 1.35rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
       color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
     }
 
     .target-distance {
@@ -319,30 +367,29 @@
       margin-top: 0.2rem;
     }
 
-    /* MODO REALIDAD AUMENTADA / CÁMARA (VERTICAL) */
+    /* MODO 2: REALIDAD AUMENTADA / CÁMARA (VERTICAL) */
     #ar-mode {
       flex: 1;
       display: none;
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 0;
+      padding: 1rem 0;
       position: relative;
     }
 
-    /* Cinta de rumbo superior */
     .ar-compass-bar {
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.55);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 0.5rem 1.2rem;
+      padding: 0.45rem 1.2rem;
       border-radius: 9999px;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .ar-reticle-container {
@@ -356,22 +403,22 @@
       justify-content: center;
     }
 
-    /* Círculo estándar */
+    /* Trazo del Círculo */
     .target-circle {
       width: 140px;
       height: 140px;
       border-radius: 50%;
       border: 4px solid var(--danger);
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.45);
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
     .target-circle.on-target {
       border-color: var(--success);
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.85);
     }
 
-    /* SVG de Casas Colgadas */
+    /* Trazo del SVG Casas Colgadas */
     .target-casas-svg {
       width: 180px;
       height: 180px;
@@ -380,13 +427,13 @@
       stroke-width: 2.5;
       stroke-linecap: round;
       stroke-linejoin: round;
-      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
       transition: stroke 0.15s, filter 0.15s;
     }
 
     .target-casas-svg.on-target {
       stroke: var(--success);
-      filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.9));
+      filter: drop-shadow(0 0 14px rgba(16, 185, 129, 0.95));
     }
 
     .ar-status-text {
@@ -396,40 +443,92 @@
       letter-spacing: 0.05em;
       text-transform: uppercase;
       background: rgba(0, 0, 0, 0.6);
-      padding: 0.3rem 0.8rem;
+      padding: 0.35rem 0.9rem;
       border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* PANEL SIMULADOR IN-PAGE (PARA PROBAR DIRECTAMENTE EN ORDENADOR O SIN SALIR) */
+    .sim-panel {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      margin: 0.5rem 1rem 0.2rem 1rem;
+      padding: 0.6rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+    }
+
+    .sim-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+    }
+
+    .sim-row label {
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .sim-row input[type="range"] {
+      flex: 1;
+      accent-color: #3b82f6;
+    }
+
+    .sim-row span.val {
+      font-family: monospace;
+      width: 44px;
+      text-align: right;
+      color: #93c5fd;
     }
 
     /* BARRA INFERIOR DE DIAGNÓSTICO */
     .bottom-info {
-      padding: 0.8rem 1rem;
-      font-size: 0.75rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.72rem;
       color: rgba(255, 255, 255, 0.6);
       display: flex;
       justify-content: space-around;
-      background: rgba(0, 0, 0, 0.5);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(0, 0, 0, 0.6);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: monospace;
     }
   </style>
 </head>
 <body>
 
-  <!-- Elemento de Vídeo para la Cámara Trasera -->
+  <!-- Elemento de Vídeo de la Cámara Real -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal de Permisos / Inicio -->
+  <!-- Simulador de Entorno si la cámara no está activa -->
+  <div id="sim-environment">
+    <div class="horizon-grid"></div>
+  </div>
+
+  <!-- Modal de Permisos y Bienvenida -->
   <div id="permission-modal">
     <div class="modal-card">
       <div class="icon-cuenca">📍</div>
       <h1>Mirando a Cuenca</h1>
-      <p>Coloca el móvil plano sobre la mano para usar la brújula, o levántalo para buscar Cuenca con la cámara.</p>
-      <button class="btn-primary" id="start-btn">
-        <span>Comenzar experiencia</span>
-      </button>
+      <p>Coloca el móvil plano sobre la palma para usar la brújula, o levántalo frente a tus ojos para buscar Cuenca con la cámara AR.</p>
+      
+      <div class="modal-actions">
+        <button class="btn-primary" id="start-btn">
+          <span>Activar Cámara y Sensores</span>
+        </button>
+        <button class="btn-secondary" id="sim-quick-btn">
+          <span>Probar en Modo Simulación</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- Contenedor de la Interfaz -->
+  <!-- Contenedor de la Aplicación -->
   <div id="app-container">
     
     <!-- Barra Superior -->
@@ -439,17 +538,21 @@
         <span id="target-status-label">Buscando...</span>
       </div>
 
-      <button class="btn-icon" id="toggle-reticle-btn">
-        <span id="reticle-mode-label">🏛️ Casas Colgadas</span>
-      </button>
+      <div class="top-buttons">
+        <button class="btn-icon" id="snap-cuenca-btn" title="Girar directo a Cuenca">
+          <span>🎯 Centrar</span>
+        </button>
+        <button class="btn-icon" id="toggle-reticle-btn">
+          <span id="reticle-mode-label">🏛️ Casas Colgadas</span>
+        </button>
+      </div>
     </div>
 
-    <!-- 1. MODO BRÚJULA (Móvil en horizontal / plano sobre la mano) -->
+    <!-- 1. MODO BRÚJULA (Mano horizontal) -->
     <div id="compass-mode">
       <div class="compass-container">
         <div class="compass-bezel"></div>
 
-        <!-- Roseta Cardinal que apunta al Norte -->
         <div class="compass-dial" id="compass-dial">
           <div class="dial-mark north">N</div>
           <div class="dial-mark east">E</div>
@@ -457,7 +560,6 @@
           <div class="dial-mark west">O</div>
         </div>
 
-        <!-- Aguja que apunta a Cuenca -->
         <div class="cuenca-needle" id="cuenca-needle">
           <div class="needle-shape">
             <div class="needle-cuenca-head" id="needle-head"></div>
@@ -469,31 +571,30 @@
 
       <div class="info-labels">
         <div class="target-city">Cuenca</div>
-        <div class="target-distance" id="distance-label">Calculando distancia...</div>
+        <div class="target-distance" id="distance-label">Calculando...</div>
       </div>
     </div>
 
-    <!-- 2. MODO CÁMARA (Móvil levantado frente a los ojos) -->
+    <!-- 2. MODO CÁMARA AR (Levantado vertical) -->
     <div id="ar-mode">
       <div class="ar-compass-bar" id="ar-bearing-bar">
         <span>📍 Cuenca: <strong id="ar-diff-angle">0°</strong></span>
       </div>
 
-      <!-- Visor central: alternable entre círculo o SVG de las Casas Colgadas -->
       <div class="ar-reticle-container">
-        <!-- Opción A: Círculo -->
+        <!-- Retículo A: Círculo -->
         <div class="target-circle" id="circle-reticle"></div>
 
-        <!-- Opción B: SVG Casas Colgadas -->
+        <!-- Retículo B: Casas Colgadas SVG -->
         <svg class="target-casas-svg" id="casas-reticle" viewBox="0 0 100 100" style="display: none;">
-          <!-- Hoz y Risco -->
+          <!-- Risco y Hoz -->
           <path d="M 5,95 Q 30,85 45,65 T 75,55 L 95,50" />
           <path d="M 45,65 L 45,95" />
           <path d="M 60,60 L 60,95" />
-          <!-- Casas Colgadas -->
+          <!-- Fachadas -->
           <rect x="42" y="28" width="22" height="30" />
           <polygon points="40,28 53,18 66,28" />
-          <!-- Balcones voladizos -->
+          <!-- Balcones volados característicos -->
           <rect x="37" y="38" width="5" height="12" />
           <line x1="37" y1="50" x2="42" y2="50" />
           <line x1="37" y1="44" x2="37" y2="48" />
@@ -508,13 +609,27 @@
         <div class="ar-status-text" id="ar-guidance-text">Gira hacia Cuenca</div>
       </div>
 
-      <div style="height: 40px;"></div>
+      <div style="height: 10px;"></div>
     </div>
 
-    <!-- Barra inferior con datos de comprobación -->
+    <!-- PANEL SIMULADOR INTERACTIVO -->
+    <div class="sim-panel">
+      <div class="sim-row">
+        <label>📐 Postura:</label>
+        <input type="range" id="sim-posture" min="0" max="90" value="15" />
+        <span class="val" id="val-posture">15° (Mano)</span>
+      </div>
+      <div class="sim-row">
+        <label>🧭 Giro Móvil:</label>
+        <input type="range" id="sim-heading" min="0" max="359" value="0" />
+        <span class="val" id="val-heading">0°</span>
+      </div>
+    </div>
+
+    <!-- Barra de diagnóstico inferior -->
     <div class="bottom-info">
-      <div>Rumbo Móvil: <span id="debug-heading">--°</span></div>
-      <div>Rumbo a Cuenca: <span id="debug-cuenca">--°</span></div>
+      <div>Móvil: <span id="debug-heading">0°</span></div>
+      <div>Cuenca: <span id="debug-cuenca">--°</span></div>
       <div>Desvío: <span id="debug-diff">--°</span></div>
     </div>
 
@@ -525,21 +640,26 @@
     const CUENCA_LAT = 40.07833;
     const CUENCA_LON = -2.12889;
 
-    let userLat = null;
-    let userLon = null;
+    let userLat = 40.4168; // Por defecto Madrid
+    let userLon = -3.7038;
     let bearingToCuenca = 0;
     let distanceKm = 0;
 
     let currentHeading = 0;
     let isVertical = false;
-    let reticleMode = 'circle'; // 'circle' o 'casas'
+    let reticleMode = 'circle';
+    let simulationMode = true;
+    let cameraActive = false;
 
-    const TOLERANCE_DEG = 9; // Margen de acierto en grados
+    const TOLERANCE_DEG = 9; // Margen de coincidencia
 
     // Elementos DOM
     const modal = document.getElementById('permission-modal');
     const startBtn = document.getElementById('start-btn');
+    const simQuickBtn = document.getElementById('sim-quick-btn');
+    const snapCuencaBtn = document.getElementById('snap-cuenca-btn');
     const video = document.getElementById('camera-video');
+    const simEnvironment = document.getElementById('sim-environment');
     const compassMode = document.getElementById('compass-mode');
     const arMode = document.getElementById('ar-mode');
     const compassDial = document.getElementById('compass-dial');
@@ -557,6 +677,10 @@
     const debugHeading = document.getElementById('debug-heading');
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
+    const simPosture = document.getElementById('sim-posture');
+    const simHeading = document.getElementById('sim-heading');
+    const valPosture = document.getElementById('val-posture');
+    const valHeading = document.getElementById('val-heading');
 
     // FÓRMULA DE RUMBO DIRECTO (Círculo Máximo / Orto-drómica)
     function calculateBearing(lat1, lon1, lat2, lon2) {
@@ -571,9 +695,9 @@
       return (θ * 180 / Math.PI + 360) % 360;
     }
 
-    // CÁLCULO DE DISTANCIA (Haversine)
+    // DISTANCIA (Haversine)
     function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Radio de la Tierra en km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -583,7 +707,47 @@
       return R * c;
     }
 
-    // INICIAR CÁMARA TRASERA
+    function recomputeGeo() {
+      bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceLabel.textContent = `A ${Math.round(distanceKm)} km en línea recta`;
+      debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
+      actualizarBrujulaYVisor();
+    }
+
+    // ALTERNAR POSTURA (PLANO vs VERTICAL)
+    function setPosture(postureDeg) {
+      const wasVertical = isVertical;
+      isVertical = postureDeg > 45;
+
+      if (isVertical) {
+        valPosture.textContent = `${postureDeg}° (AR/Ojos)`;
+      } else {
+        valPosture.textContent = `${postureDeg}° (Mano)`;
+      }
+
+      if (isVertical !== wasVertical || !compassMode.style.display) {
+        if (isVertical) {
+          compassMode.style.display = "none";
+          arMode.style.display = "flex";
+          if (cameraActive) {
+            video.style.display = "block";
+            simEnvironment.style.display = "none";
+          } else {
+            video.style.display = "none";
+            simEnvironment.style.display = "block";
+          }
+        } else {
+          arMode.style.display = "none";
+          compassMode.style.display = "flex";
+          video.style.display = "none";
+          simEnvironment.style.display = "none";
+        }
+      }
+      actualizarBrujulaYVisor();
+    }
+
+    // CÁMARA
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -591,139 +755,110 @@
           audio: false
         });
         video.srcObject = stream;
-        video.play();
+        await video.play();
+        cameraActive = true;
       } catch (err) {
-        console.warn("No se pudo iniciar la cámara trasera:", err);
+        console.warn("Cámara no disponible, usando entorno simulado:", err);
+        cameraActive = false;
       }
     }
 
-    // GESTIÓN DE ORIENTACIÓN Y GIROSCOPIO
+    // MANEJO DE SENSORES REALES (MÓVIL)
     function handleOrientation(e) {
-      let heading = null;
+      if (simulationMode && !e.webkitCompassHeading && e.alpha === null) return;
+      simulationMode = false;
 
-      // 1. iOS Safari (webkitCompassHeading nos da el Norte en grados directos)
+      let heading = null;
       if (typeof e.webkitCompassHeading !== "undefined") {
         heading = e.webkitCompassHeading;
-      } 
-      // 2. Android estándar (deviceorientationabsolute o deviceorientation)
-      else if (e.alpha !== null) {
+      } else if (e.alpha !== null) {
         heading = (360 - e.alpha) % 360;
       }
 
-      if (heading === null) return;
-      currentHeading = heading;
-
-      // Detección de postura: Plano sobre la mano vs. Vertical frente a los ojos
-      // beta: ~0° cuando está plano boca arriba, ~90° cuando está levantado
-      const beta = Math.abs(e.beta || 0);
-      const wasVertical = isVertical;
-      isVertical = beta > 45;
-
-      if (isVertical !== wasVertical) {
-        if (isVertical) {
-          compassMode.style.display = "none";
-          arMode.style.display = "flex";
-          video.style.display = "block";
-        } else {
-          arMode.style.display = "none";
-          compassMode.style.display = "flex";
-          video.style.display = "none";
-        }
+      if (heading !== null) {
+        currentHeading = heading;
+        simHeading.value = Math.round(heading);
+        valHeading.textContent = `${Math.round(heading)}°`;
       }
 
-      actualizarBrujulaYVisor();
+      const beta = Math.abs(e.beta || 0);
+      simPosture.value = Math.round(beta);
+      setPosture(beta);
     }
 
+    // ACTUALIZACIÓN DE INTERFAZ
     function actualizarBrujulaYVisor() {
-      // 1. Roseta cardinal: gira en sentido opuesto para que la N mire siempre al Norte
+      // 1. Roseta cardinal girando hacia el Norte
       compassDial.style.transform = `rotate(${-currentHeading}deg)`;
 
-      // 2. Aguja a Cuenca: la diferencia entre el rumbo a Cuenca y hacia dónde mira el móvil
+      // 2. Aguja apuntando al rumbo relativo a Cuenca
       const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
       cuencaNeedle.style.transform = `rotate(${needleAngle}deg)`;
 
-      // 3. Diferencia angular normalizada (-180° a +180°)
+      // 3. Desvío más corto (-180° a +180°)
       let diff = (bearingToCuenca - currentHeading + 540) % 360 - 180;
       const isLookingAtCuenca = Math.abs(diff) <= TOLERANCE_DEG;
 
-      // Actualizar información en AR
       arDiffAngle.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'a la der.' : 'a la izq.'}`;
 
-      // Actualizar estados visuales (Rojo / Verde)
       if (isLookingAtCuenca) {
         circleReticle.classList.add('on-target');
         casasReticle.classList.add('on-target');
-        needleHead.style.borderBottomColor = "#10b981";
+        needleHead.style.borderBottomColor = "var(--success)";
         targetDot.classList.add('active');
         targetStatusLabel.textContent = "¡Mirando a Cuenca!";
         arGuidanceText.textContent = "🎯 ¡Estás mirando a Cuenca!";
       } else {
         circleReticle.classList.remove('on-target');
         casasReticle.classList.remove('on-target');
-        needleHead.style.borderBottomColor = "#ef4444";
+        needleHead.style.borderBottomColor = "var(--danger)";
         targetDot.classList.remove('active');
         targetStatusLabel.textContent = "Buscando Cuenca";
         arGuidanceText.textContent = diff > 0 ? "Gira a la derecha ➡️" : "⬅️ Gira a la izquierda";
       }
 
-      // Panel de depuración inferior
       debugHeading.textContent = `${Math.round(currentHeading)}°`;
-      debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
       debugDiff.textContent = `${Math.round(diff)}°`;
     }
 
     // GEOLOCALIZACIÓN GPS
     function initGPS() {
-      if (!navigator.geolocation) {
-        alert("Tu navegador no soporta geolocalización.");
-        return;
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          (pos) => {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+            recomputeGeo();
+          },
+          (err) => {
+            console.warn("GPS falló o denegado:", err);
+            recomputeGeo();
+          },
+          { enableHighAccuracy: true, maximumAge: 5000 }
+        );
+      } else {
+        recomputeGeo();
       }
-
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          userLat = pos.coords.latitude;
-          userLon = pos.coords.longitude;
-
-          bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
-          distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
-
-          distanceLabel.textContent = `A ${Math.round(distanceKm)} km en línea recta`;
-          actualizarBrujulaYVisor();
-        },
-        (err) => {
-          console.warn("Error en GPS:", err);
-          // Si deniegan o falla el GPS, se usa Madrid por defecto para pruebas
-          userLat = 40.4168;
-          userLon = -3.7038;
-          bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
-          distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
-          distanceLabel.textContent = `Aprox. ${Math.round(distanceKm)} km (Modo estimado)`;
-          actualizarBrujulaYVisor();
-        },
-        { enableHighAccuracy: true, maximumAge: 10000 }
-      );
     }
 
-    // BOTÓN DE INICIO: PEDIR PERMISOS
+    // BOTÓN INICIAR CON HARDWARE REAL
     startBtn.addEventListener('click', async () => {
-      // 1. Iniciar GPS y Cámara
+      simulationMode = false;
       initGPS();
       await startCamera();
 
-      // 2. Permisos de Sensores en iOS 13+
+      // iOS 13+
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const permission = await DeviceOrientationEvent.requestPermission();
           if (permission === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation, true);
-          } else {
-            alert('Se requiere el permiso de orientación para la brújula.');
           }
         } catch (err) {
           console.error(err);
         }
       } else {
-        // En Android escuchamos preferentemente el evento absoluto
+        // Android
         if ('ondeviceorientationabsolute' in window) {
           window.addEventListener('deviceorientationabsolute', handleOrientation, true);
         } else {
@@ -731,11 +866,36 @@
         }
       }
 
-      // Ocultar modal de inicio
       modal.style.display = 'none';
     });
 
-    // ALTERNAR ENTRE CÍRCULO Y CASAS COLGADAS SVG
+    // BOTÓN SIMULACIÓN RÁPIDA
+    simQuickBtn.addEventListener('click', () => {
+      recomputeGeo();
+      modal.style.display = 'none';
+      setPosture(15);
+    });
+
+    // BOTÓN APUNTAR DIRECTO A CUENCA
+    snapCuencaBtn.addEventListener('click', () => {
+      currentHeading = Math.round(bearingToCuenca);
+      simHeading.value = currentHeading;
+      valHeading.textContent = `${currentHeading}°`;
+      actualizarBrujulaYVisor();
+    });
+
+    // CONTROLES DE SIMULACIÓN
+    simPosture.addEventListener('input', (e) => {
+      setPosture(Number(e.target.value));
+    });
+
+    simHeading.addEventListener('input', (e) => {
+      currentHeading = Number(e.target.value);
+      valHeading.textContent = `${currentHeading}°`;
+      actualizarBrujulaYVisor();
+    });
+
+    // SELECTOR DE RETÍCULO (CÍRCULO vs CASAS COLGADAS)
     toggleReticleBtn.addEventListener('click', () => {
       if (reticleMode === 'circle') {
         reticleMode = 'casas';
@@ -749,6 +909,11 @@
         reticleModeLabel.textContent = "🏛️ Casas Colgadas";
       }
     });
+
+    window.onload = () => {
+      recomputeGeo();
+      setPosture(15);
+    };
   </script>
 </body>
 </html>
