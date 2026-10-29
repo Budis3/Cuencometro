@@ -1,674 +1,454 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mirando a Cuenca - AR & Brújula</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
-        }
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #05070d;
-            font-family: 'Inter', sans-serif;
-            color: #ffffff;
-        }
-        .font-mono-hud {
-            font-family: 'JetBrains Mono', monospace;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Mirando a Cuenca</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
-        /* Cámara Trasera sin obstrucciones: 100% nítida a pantalla completa */
-        #camera-stream {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover;
-            z-index: 1;
-            background: #000000;
-        }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d0f18;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
+    }
 
-        /* Capa AR por encima de la cámara */
-        #ar-overlay-layer {
-            position: fixed;
-            inset: 0;
-            z-index: 10;
-            pointer-events: none;
-            background: transparent;
-        }
+    /* PANTALLA DE INICIO / PERMISOS */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: radial-gradient(circle at center, #1e2238 0%, #0d0f18 100%);
+    }
 
-        /* ==========================================================================
-           TRAZO DEL VISOR (ROJO VS VERDE BRILLANTE)
-           ========================================================================== */
-        .target-reticle-stroke {
-            fill: none;
-            stroke: #ff2244; /* Rojo neón cuando no apunta */
-            stroke-width: 3.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            filter: drop-shadow(0 0 10px rgba(255, 34, 68, 0.85));
-            transition: stroke 0.15s ease, filter 0.15s ease;
-        }
+    .btn-main {
+      background: #00ff66;
+      color: #05140b;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 16px 28px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 255, 102, 0.4);
+      margin-top: 24px;
+      transition: transform 0.15s ease;
+    }
 
-        .is-aligned .target-reticle-stroke {
-            stroke: #00ff66 !important; /* Verde intenso cuando apunta a Cuenca */
-            filter: drop-shadow(0 0 18px rgba(0, 255, 102, 0.95)) !important;
-        }
+    .btn-main:active {
+      transform: scale(0.96);
+    }
 
-        .is-aligned #center-badge {
-            background-color: rgba(0, 255, 102, 0.95) !important;
-            color: #050811 !important;
-            border-color: #00ff66 !important;
-            box-shadow: 0 0 25px rgba(0, 255, 102, 0.6) !important;
-        }
+    /* CÁMARA (FONDO COMPLETO) */
+    #camera-video {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 1;
+      display: none;
+    }
 
-        /* Centrado absoluto perfecto para agujas y discos superpuestos */
-        .origin-exact-center {
-            transform-origin: 50% 50%;
-        }
+    /* CAPA DE INTERFAZ AR */
+    #ar-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 20px) 16px;
+    }
 
-        .compass-mask {
-            mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
-        }
-    </style>
+    /* BARRA SUPERIOR AR */
+    .ar-top-bar {
+      width: 100%;
+      max-width: 380px;
+      background: rgba(13, 15, 24, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .ar-direction-hint {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .ar-tape-container {
+      width: 100%;
+      height: 20px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .ar-tape-indicator {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 2px;
+      height: 100%;
+      background: #00ff66;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .ar-tape-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #ff2244;
+      transition: left 0.1s linear, color 0.2s ease;
+    }
+
+    /* RETÍCULA CENTRAL */
+    .reticle-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .reticle-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 4px solid #ff2244;
+      box-shadow: 0 0 15px rgba(255, 34, 68, 0.5);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .target-active {
+      border-color: #00ff66 !important;
+      box-shadow: 0 0 25px rgba(0, 255, 102, 0.8) !important;
+    }
+
+    /* MODO PLANO (BRÚJULA EN PALMA) */
+    #compass-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .compass-dial {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .compass-needle {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      transition: transform 0.1s linear;
+      transform-origin: 50% 50%;
+    }
+
+    /* BOTONES DE CONTROL SUPERIOR */
+    .top-controls {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 25;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-toggle {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+  </style>
 </head>
-<body class="relative w-full h-full">
+<body>
 
-    <!-- ==========================================================================
-         1. STREAM DE CÁMARA (Sin difuminados ni filtros morados)
-         ========================================================================== -->
-    <video id="camera-stream" autoplay playsinline muted></video>
+  <!-- PANTALLA INICIAL -->
+  <div id="start-screen">
+    <h1 style="font-size: 2rem; margin-bottom: 8px;">Mirando a Cuenca</h1>
+    <p style="color: #aaa; max-width: 300px; font-size: 0.95rem;">
+      Descubre la dirección exacta a las Casas Colgadas de Cuenca con tu brújula y cámara.
+    </p>
+    <button class="btn-main" id="btn-start">Iniciar Sensores</button>
+  </div>
 
-    <!-- ==========================================================================
-         2. PANTALLA DE INICIO / PETICIÓN DE PERMISOS (Requerido para iOS & GPS)
-         ========================================================================== -->
-    <div id="splash-modal" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-between p-6 text-center">
-        <div class="w-full max-w-sm my-auto flex flex-col items-center">
-            
-            <div class="w-20 h-20 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-5 shadow-2xl">
-                <svg class="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
-                    <polygon points="12,2 15,12 12,10 9,12" fill="currentColor"/>
-                    <polygon points="12,22 15,12 12,14 9,12" fill="rgba(255,255,255,0.3)"/>
-                </svg>
-            </div>
+  <!-- CÁMARA (MODO VERTICAL) -->
+  <video id="camera-video" playsinline autoplay muted></video>
 
-            <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">
-                Mirando a <span class="text-emerald-400">Cuenca</span>
-            </h1>
-            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                Detector de orientación geográfica en tiempo real hacia las Casas Colgadas de Cuenca.
-            </p>
-
-            <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 text-left text-xs text-slate-300 space-y-2 mb-6">
-                <div class="flex items-center gap-2 text-amber-300 font-bold">
-                    <span>✋</span>
-                    <span>Móvil plano en la palma:</span>
-                    <span class="text-slate-400 font-normal">Brújula directa</span>
-                </div>
-                <div class="flex items-center gap-2 text-emerald-300 font-bold">
-                    <span>👁️</span>
-                    <span>Móvil levantado:</span>
-                    <span class="text-slate-400 font-normal">Cámara AR completa</span>
-                </div>
-            </div>
-
-            <button id="btn-activate" class="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                </svg>
-                <span>Activar Sensores y Cámara</span>
-            </button>
-
-            <div id="status-debug-text" class="mt-4 text-xs font-mono-hud text-slate-500">
-                Esperando activación...
-            </div>
-        </div>
-
-        <div class="text-[11px] text-slate-600 font-mono-hud">
-            Objetivo: Casas Colgadas (40.0783° N, 2.1287° W)
-        </div>
+  <!-- CAPA MODO VERTICAL / AR -->
+  <div id="ar-layer">
+    <div class="ar-top-bar">
+      <div class="ar-direction-hint" id="ar-hint">Buscando Cuenca...</div>
+      <div class="ar-tape-container">
+        <div class="ar-tape-indicator"></div>
+        <div class="ar-tape-marker" id="tape-marker">CUENCA</div>
+      </div>
     </div>
 
-    <!-- ==========================================================================
-         3. MODO BRÚJULA: MÓVIL PLANO EN LA PALMA (Fondo oscuro, aguja centrada)
-         ========================================================================== -->
-    <div id="flat-compass-layer" class="fixed inset-0 z-20 bg-slate-950 flex flex-col items-center justify-between p-5">
-        
-        <!-- Barra superior modo plano -->
-        <div class="w-full max-w-sm flex items-center justify-between bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl mt-2">
-            <div>
-                <span class="text-[10px] font-mono-hud uppercase text-amber-400 font-bold block">Móvil Plano (Palma)</span>
-                <span class="text-xs text-slate-300">Levanta para activar Cámara AR</span>
-            </div>
-            <div class="text-right font-mono-hud">
-                <span id="flat-km-label" class="text-sm font-bold text-emerald-400">--- km</span>
-            </div>
-        </div>
-
-        <!-- CONTENEDOR GEOMÉTRICAMENTE CENTRADO DE LA BRÚJULA -->
-        <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center my-auto">
-            
-            <!-- Aro exterior decorativo -->
-            <div id="flat-outer-circle" class="absolute inset-0 rounded-full border-2 border-slate-800 transition-colors duration-200"></div>
-
-            <!-- Marca fija del teléfono (Línea de proa) -->
-            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 flex flex-col items-center z-30">
-                <div id="flat-pointer-tip" class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-rose-500 transition-colors"></div>
-            </div>
-
-            <!-- Disco del Norte y Cuadrante Magnético (Gira según el rumbo del móvil) -->
-            <div id="flat-compass-card" class="absolute inset-2 rounded-full bg-slate-900/95 border border-slate-700/80 origin-exact-center flex items-center justify-center">
-                <!-- Puntos cardinales exactos -->
-                <span class="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-extrabold text-rose-500">N</span>
-                <span class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-bold text-slate-500">S</span>
-                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-500">E</span>
-                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-500">O</span>
-                
-                <!-- Marcas radiales de grados -->
-                <div class="w-full h-full rounded-full border border-dashed border-slate-700/40"></div>
-            </div>
-
-            <!-- AGUJA DIRECTA A CUENCA (Centrada al milímetro con SVG simétrico 200x200) -->
-            <div id="flat-needle-container" class="absolute inset-0 origin-exact-center pointer-events-none flex items-center justify-center">
-                <svg class="w-full h-full origin-exact-center" viewBox="0 0 200 200">
-                    <!-- Flecha hacia Cuenca -->
-                    <polygon id="flat-needle-poly" points="100,20 110,95 100,85 90,95" fill="#ff2244" class="transition-colors duration-150"/>
-                    <line id="flat-needle-line" x1="100" y1="85" x2="100" y2="155" stroke="#ff2244" stroke-width="3" stroke-linecap="round"/>
-                    
-                    <!-- Pespunte y distintivo Cuenca en la aguja -->
-                    <rect x="74" y="44" width="52" height="16" rx="8" fill="#090d16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
-                    <text x="100" y="55" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="bold" font-family="'JetBrains Mono', monospace">CUENCA</text>
-                </svg>
-            </div>
-
-            <!-- Núcleo central con lectura digital del ángulo relativo -->
-            <div class="absolute w-20 h-20 rounded-full bg-slate-950 border border-slate-700 flex flex-col items-center justify-center z-20 shadow-xl">
-                <span id="flat-relative-angle" class="text-base font-mono-hud font-bold text-white">0°</span>
-                <span id="flat-turn-label" class="text-[9px] font-mono-hud uppercase text-rose-400 font-semibold">Gira</span>
-            </div>
-        </div>
-
-        <!-- Panel de datos inferior del modo plano -->
-        <div class="w-full max-w-sm bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center justify-around text-xs font-mono-hud mb-2">
-            <div class="text-center">
-                <span class="text-[10px] text-slate-500 block">RUMBO MÓVIL</span>
-                <span id="data-heading" class="text-white font-bold">---°</span>
-            </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div class="text-center">
-                <span class="text-[10px] text-slate-500 block">AZIMUT CUENCA</span>
-                <span id="data-bearing" class="text-amber-400 font-bold">---°</span>
-            </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div class="text-center">
-                <span class="text-[10px] text-slate-500 block">INCLINACIÓN</span>
-                <span id="data-tilt" class="text-cyan-400 font-bold">0°</span>
-            </div>
-        </div>
+    <!-- RETÍCULA CIRCULAR -->
+    <div class="reticle-container">
+      <div id="reticle" class="reticle-circle"></div>
     </div>
 
-    <!-- ==========================================================================
-         4. MODO CÁMARA AR: MÓVIL LEVANTADO (Visor transparente sobre la cámara)
-         ========================================================================== -->
-    <div id="ar-overlay-layer" class="flex flex-col items-center justify-between p-4 hidden">
-        
-        <!-- BARRITA SUPERIOR TIPO HUD (Compass Tape) -->
-        <div class="w-full max-w-md mt-2 flex flex-col items-center">
-            
-            <div class="relative w-full h-12 bg-slate-950/70 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden compass-mask shadow-lg">
-                <!-- Línea de mira central fija -->
-                <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-white z-20"></div>
-                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-white z-20"></div>
+    <div style="font-size: 0.85rem; color: #ccc; text-align: center; margin-bottom: 10px;" id="dist-text-ar">
+      Calculando distancia...
+    </div>
+  </div>
 
-                <!-- Pista dinámica con las marcas y la baliza de Cuenca -->
-                <div id="ar-hud-track" class="relative w-full h-full flex items-center"></div>
-            </div>
-
-            <!-- Etiqueta de proximidad / desviación debajo de la cinta -->
-            <div class="mt-2 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-sm border border-white/15 flex items-center gap-3 text-xs font-mono-hud shadow">
-                <span id="ar-hint-text" class="text-rose-400 font-bold">Buscando Cuenca...</span>
-                <span class="text-slate-600">|</span>
-                <span id="ar-km-pill" class="text-emerald-400 font-bold">--- km</span>
-            </div>
-        </div>
-
-        <!-- VISOR CENTRAL: CIRCUNFERENCIA O SVG CASAS COLGADAS -->
-        <div class="relative flex flex-col items-center justify-center my-auto">
-            
-            <!-- OPCIÓN 1: CIRCUNFERENCIA PURA -->
-            <svg id="reticle-circle" class="w-56 h-56 sm:w-64 sm:h-64 overflow-visible" viewBox="0 0 200 200">
-                <circle class="target-reticle-stroke" cx="100" cy="100" r="80" />
-                <line class="target-reticle-stroke" x1="100" y1="12" x2="100" y2="20" />
-                <line class="target-reticle-stroke" x1="100" y1="180" x2="100" y2="188" />
-                <line class="target-reticle-stroke" x1="12" y1="100" x2="20" y2="100" />
-                <line class="target-reticle-stroke" x1="180" y1="100" x2="188" y2="100" />
-            </svg>
-
-            <!-- OPCIÓN 2: SVG CASAS COLGADAS DE CUENCA -->
-            <svg id="reticle-casas" class="w-64 h-64 sm:w-72 sm:h-72 overflow-visible hidden" viewBox="0 0 240 240">
-                <!-- Marco exterior -->
-                <circle class="target-reticle-stroke" cx="120" cy="120" r="102" stroke-dasharray="6 6" stroke-width="2" />
-                <!-- Hoz del Huécar y acantilado -->
-                <path class="target-reticle-stroke" d="M 40 195 L 60 165 L 56 145 L 66 130 L 174 130 L 184 150 L 178 172 L 200 195" />
-                <path class="target-reticle-stroke" d="M 75 150 L 95 166 M 145 148 L 160 170 M 112 155 L 122 182" stroke-width="2" />
-                <!-- Cuerpos de las Casas Colgadas -->
-                <path class="target-reticle-stroke" d="M 66 130 L 66 78 L 102 60 L 102 130" />
-                <path class="target-reticle-stroke" d="M 102 130 L 102 50 L 142 64 L 142 130" />
-                <path class="target-reticle-stroke" d="M 142 130 L 142 74 L 174 62 L 174 130" />
-                <!-- Tejados -->
-                <path class="target-reticle-stroke" d="M 60 80 L 104 58 M 98 52 L 146 66 M 138 74 L 180 60" stroke-width="4" />
-                <!-- Balcones de madera volados -->
-                <rect class="target-reticle-stroke" x="72" y="96" width="22" height="15" />
-                <line class="target-reticle-stroke" x1="72" y1="111" x2="66" y2="122" stroke-width="2" />
-                <line class="target-reticle-stroke" x1="94" y1="111" x2="102" y2="122" stroke-width="2" />
-                <rect class="target-reticle-stroke" x="108" y="88" width="26" height="17" />
-                <line class="target-reticle-stroke" x1="108" y1="105" x2="102" y2="118" stroke-width="2" />
-                <line class="target-reticle-stroke" x1="134" y1="105" x2="142" y2="118" stroke-width="2" />
-                <rect class="target-reticle-stroke" x="148" y="98" width="20" height="14" />
-                <line class="target-reticle-stroke" x1="148" y1="112" x2="142" y2="122" stroke-width="2" />
-                <line class="target-reticle-stroke" x1="168" y1="112" x2="174" y2="122" stroke-width="2" />
-            </svg>
-
-            <!-- Distintivo central dinámico -->
-            <div id="center-badge" class="mt-4 px-4 py-1.5 rounded-full bg-slate-950/80 border border-rose-500 text-rose-400 font-mono-hud text-xs font-bold uppercase tracking-wider transition-all duration-200">
-                Apunta a Cuenca
-            </div>
-        </div>
-
-        <!-- Pie AR -->
-        <div class="w-full max-w-sm mb-2 flex items-center justify-between px-4 py-2 rounded-xl bg-slate-950/70 backdrop-blur-sm border border-white/10 text-[11px] font-mono-hud text-slate-300">
-            <span>CÁMARA AR</span>
-            <span id="ar-angle-diff-readout">Desviación: ---°</span>
-        </div>
+  <!-- CAPA MODO PLANO (BRÚJULA EN PALMA) -->
+  <div id="compass-layer">
+    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px;">
+      Móvil plano sobre la mano
     </div>
 
-    <!-- BOTÓN FLOTANTE PARA CAMBIAR ENTRE CÍRCULO Y SVG DE CASAS COLGADAS -->
-    <button id="btn-toggle-shape" class="fixed top-3 left-3 z-30 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-white border border-white/20 text-xs font-semibold backdrop-blur-md transition flex items-center gap-1.5 cursor-pointer pointer-events-auto">
-        <span id="toggle-icon">🏛️</span>
-        <span id="toggle-label">Ver Casas Colgadas</span>
-    </button>
+    <div class="compass-dial">
+      <svg class="compass-needle" id="needle-svg" viewBox="0 0 200 200">
+        <!-- Aguja que apunta hacia Cuenca -->
+        <polygon points="100,20 112,100 88,100" fill="#00ff66" />
+        <polygon points="100,180 112,100 88,100" fill="#555" />
+        <circle cx="100" cy="100" r="8" fill="#fff" />
+        <text x="100" y="15" fill="#00ff66" font-size="12" font-weight="bold" text-anchor="middle">CUENCA</text>
+      </svg>
+    </div>
 
-    <!-- ==========================================================================
-         LÓGICA JAVASCRIPT: GEODESIA, ORIENTACIÓN Y SENSOR ABSOLUTO
-         ========================================================================== -->
-    <script>
-        // Coordenadas oficiales de las Casas Colgadas de Cuenca
-        const CUENCA_LAT = 40.0783;
-        const CUENCA_LON = -2.1287;
-        const ALIGNMENT_THRESHOLD_DEG = 8.0; // ±8° para iluminar verde
-        const TILT_THRESHOLD_DEG = 45;       // <45° móvil plano | >=45° levantado (cámara)
+    <div id="dist-text-compass" style="color: #aaa; font-size: 0.95rem;">
+      Esperando GPS...
+    </div>
+  </div>
 
-        const appState = {
-            userLat: null,
-            userLon: null,
-            heading: 0,         // Rumbo actual de la brújula (0..360°, Norte = 0°)
-            bearingToCuenca: 0, // Rumbo directo a Cuenca desde la posición actual
-            distanceKm: 0,
-            tilt: 0,            // Elevación del móvil (0 = plano sobre la mano, 90 = vertical frente a ojos)
-            relativeAngle: 0,   // Diferencia (-180..+180) entre heading y Cuenca
-            isAligned: false,
-            isUpright: false,
-            useCasasSvg: false
-        };
+  <!-- BOTÓN DE INVERTIR RUTA SI TU MÓVIL LEE EL EJE CONTRARIO -->
+  <div class="top-controls">
+    <button class="btn-toggle" id="btn-invert">Invertir 180° (Activar/Desactivar)</button>
+  </div>
 
-        const dom = {
-            splash: document.getElementById('splash-modal'),
-            btnActivate: document.getElementById('btn-activate'),
-            statusDebug: document.getElementById('status-debug-text'),
-            video: document.getElementById('camera-stream'),
-            flatLayer: document.getElementById('flat-compass-layer'),
-            arLayer: document.getElementById('ar-overlay-layer'),
-            btnToggleShape: document.getElementById('btn-toggle-shape'),
-            toggleLabel: document.getElementById('toggle-label'),
-            reticleCircle: document.getElementById('reticle-circle'),
-            reticleCasas: document.getElementById('reticle-casas'),
-            centerBadge: document.getElementById('center-badge'),
-            arHudTrack: document.getElementById('ar-hud-track'),
-            arHintText: document.getElementById('ar-hint-text'),
-            arKmPill: document.getElementById('ar-km-pill'),
-            arAngleDiffReadout: document.getElementById('ar-angle-diff-readout'),
-            flatCompassCard: document.getElementById('flat-compass-card'),
-            flatNeedleContainer: document.getElementById('flat-needle-container'),
-            flatNeedlePoly: document.getElementById('flat-needle-poly'),
-            flatNeedleLine: document.getElementById('flat-needle-line'),
-            flatPointerTip: document.getElementById('flat-pointer-tip'),
-            flatOuterCircle: document.getElementById('flat-outer-circle'),
-            flatRelativeAngle: document.getElementById('flat-relative-angle'),
-            flatTurnLabel: document.getElementById('flat-turn-label'),
-            flatKmLabel: document.getElementById('flat-km-label'),
-            dataHeading: document.getElementById('data-heading'),
-            dataBearing: document.getElementById('data-bearing'),
-            dataTilt: document.getElementById('data-tilt')
-        };
+  <script>
+    // Coordenadas oficiales de las Casas Colgadas de Cuenca
+    const CUENCA_LAT = 40.0783;
+    const CUENCA_LNG = -2.1287;
 
-        // ==========================================================================
-        // CÁLCULO GEODÉSICO EXACTO DE RUMBO (GREAT-CIRCLE BEARING) Y DISTANCIA
-        // ==========================================================================
-        const toRad = deg => (deg * Math.PI) / 180.0;
-        const toDeg = rad => (rad * 180.0) / Math.PI;
+    let userLat = null;
+    let userLng = null;
+    let targetBearing = 0; // Rumbo directo hacia Cuenca
+    let invertHeading = false; // Alternador por si algún terminal lo lee invertido
 
-        function calculateInitialBearing(lat1, lon1, lat2, lon2) {
-            const φ1 = toRad(lat1);
-            const φ2 = toRad(lat2);
-            const Δλ = toRad(lon2 - lon1);
+    // Elementos DOM
+    const startScreen = document.getElementById('start-screen');
+    const btnStart = document.getElementById('btn-start');
+    const cameraVideo = document.getElementById('camera-video');
+    const arLayer = document.getElementById('ar-layer');
+    const compassLayer = document.getElementById('compass-layer');
+    const reticle = document.getElementById('reticle');
+    const needleSvg = document.getElementById('needle-svg');
+    const arHint = document.getElementById('ar-hint');
+    const tapeMarker = document.getElementById('tape-marker');
+    const distTextAr = document.getElementById('dist-text-ar');
+    const distTextCompass = document.getElementById('dist-text-compass');
+    const btnInvert = document.getElementById('btn-invert');
 
-            const y = Math.sin(Δλ) * Math.cos(φ2);
-            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-            const θ = Math.atan2(y, x);
+    btnInvert.addEventListener('click', () => {
+      invertHeading = !invertHeading;
+      btnInvert.style.borderColor = invertHeading ? '#00ff66' : 'rgba(255,255,255,0.3)';
+    });
 
-            return (toDeg(θ) + 360.0) % 360.0;
+    // 1. INICIAR SENSORES TRAS GESTO DE USUARIO (REQUISITO IOS/ANDROID)
+    btnStart.addEventListener('click', async () => {
+      startScreen.style.display = 'none';
+
+      // Solicitar GPS
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(updatePosition, handleGeoError, {
+          enableHighAccuracy: true,
+          maximumAge: 1000
+        });
+      }
+
+      // Solicitar Cámara
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        cameraVideo.srcObject = stream;
+      } catch (err) {
+        console.warn("No se pudo iniciar la cámara:", err);
+      }
+
+      // Permiso de orientación para iOS 13+
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const resp = await DeviceOrientationEvent.requestPermission();
+          if (resp === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+          }
+        } catch (e) {
+          console.error(e);
         }
+      } else {
+        // En Android, escuchar evento absoluto para brújula magnética real
+        if ('ondeviceorientationabsolute' in window) {
+          window.addEventListener('deviceorientationabsolute', handleOrientation);
+        } else {
+          window.addEventListener('deviceorientation', handleOrientation);
+        }
+      }
+    });
 
-        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-            const R = 6371.0;
-            const dLat = toRad(lat2 - lat1);
-            const dLon = toRad(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    // 2. CÁLCULO DE RUMBO (BEARING) Y DISTANCIA
+    function toRad(deg) { return deg * (Math.PI / 180); }
+    function toDeg(rad) { return rad * (180 / Math.PI); }
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const phi1 = toRad(lat1);
+      const phi2 = toRad(lat2);
+      const deltaLambda = toRad(lon2 - lon1);
+
+      const y = Math.sin(deltaLambda) * Math.cos(phi2);
+      const x = Math.cos(phi1) * Math.sin(phi2) -
+                Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radio de la Tierra en km
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                 Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
                 Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return Math.round(R * c);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c);
+    }
+
+    function updatePosition(pos) {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+
+      targetBearing = calculateBearing(userLat, userLng, CUENCA_LAT, CUENCA_LNG);
+      const distance = calculateDistance(userLat, userLng, CUENCA_LAT, CUENCA_LNG);
+
+      const text = `Cuenca está a ${distance} km (Rumbo: ${Math.round(targetBearing)}°)`;
+      distTextAr.textContent = text;
+      distTextCompass.textContent = text;
+    }
+
+    function handleGeoError(err) {
+      console.warn("Error GPS:", err);
+    }
+
+    // 3. PROCESAR ORIENTACIÓN DEL MÓVIL
+    function handleOrientation(e) {
+      // Detección de rumbo brújula
+      let heading = 0;
+
+      if (e.webkitCompassHeading) {
+        // En iOS el valor es el acimut directo en grados respecto al Norte magnético
+        heading = e.webkitCompassHeading;
+      } else if (e.alpha !== null) {
+        // En Android estándar 'alpha' va en sentido antihorario
+        heading = (360 - e.alpha) % 360;
+      }
+
+      // Si el botón de inversión está activo
+      if (invertHeading) {
+        heading = (heading + 180) % 360;
+      }
+
+      // Detección de inclinación: plano sobre la mano vs. alzado frente a los ojos
+      const pitch = Math.abs(e.beta || 0);
+      const isVertical = pitch > 45 && pitch < 135;
+
+      if (isVertical) {
+        // MODO CÁMARA / AR
+        cameraVideo.style.display = 'block';
+        arLayer.style.display = 'flex';
+        compassLayer.style.display = 'none';
+
+        // Desfase entre hacia dónde mira el usuario y Cuenca
+        let diff = (targetBearing - heading + 540) % 360 - 180;
+
+        // Si estamos a menos de 8 grados, ¡estás mirando a Cuenca!
+        if (Math.abs(diff) <= 8) {
+          reticle.classList.add('target-active');
+          arHint.textContent = "¡ESTÁS MIRANDO A CUENCA!";
+          arHint.style.color = "#00ff66";
+          tapeMarker.style.color = "#00ff66";
+        } else {
+          reticle.classList.remove('target-active');
+          arHint.textContent = diff > 0 ? "Gira a la DERECHA ➔" : "⬅ Gira a la IZQUIERDA";
+          arHint.style.color = "#fff";
+          tapeMarker.style.color = "#ff2244";
         }
 
-        function updateGeoTarget() {
-            if (appState.userLat === null || appState.userLon === null) return;
-            appState.bearingToCuenca = calculateInitialBearing(
-                appState.userLat,
-                appState.userLon,
-                CUENCA_LAT,
-                CUENCA_LON
-            );
-            appState.distanceKm = calculateDistanceKm(
-                appState.userLat,
-                appState.userLon,
-                CUENCA_LAT,
-                CUENCA_LON
-            );
-        }
+        // Posición de la cinta superior (-45° a +45°)
+        let clampedDiff = Math.max(-45, Math.min(45, diff));
+        let percent = 50 + (clampedDiff / 45) * 50;
+        tapeMarker.style.left = `${percent}%`;
 
-        // ==========================================================================
-        // LECTURA DE SENSORES Y BRÚJULA ABSOLUTA (ANDROID / IOS COMPATIBLE)
-        // ==========================================================================
-        function getDeviceTilt(beta, gamma) {
-            if (beta === null || gamma === null) return 0;
-            const bRad = toRad(beta);
-            const gRad = toRad(gamma);
-            // Proyección ortogonal respecto al plano horizontal
-            const cosVal = Math.abs(Math.cos(bRad) * Math.cos(gRad));
-            const clamped = Math.min(1.0, Math.max(0.0, cosVal));
-            return Math.round(toDeg(Math.acos(clamped)));
-        }
+      } else {
+        // MODO PLANO SOBRE LA MANO (BRÚJULA TRADICIONAL)
+        cameraVideo.style.display = 'none';
+        arLayer.style.display = 'none';
+        compassLayer.style.display = 'flex';
 
-        function getScreenRotation() {
-            if (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number') {
-                return window.screen.orientation.angle;
-            }
-            if (typeof window.orientation === 'number') {
-                return window.orientation;
-            }
-            return 0;
-        }
-
-        function processOrientation(event) {
-            // Inclinación respecto a la mesa
-            if (event.beta !== null && event.gamma !== null) {
-                appState.tilt = getDeviceTilt(event.beta, event.gamma);
-            }
-
-            let trueHeading = null;
-
-            // 1. iOS: webkitCompassHeading ya apunta al Norte Magnético (0..360° horario)
-            if (typeof event.webkitCompassHeading === 'number') {
-                trueHeading = event.webkitCompassHeading;
-            } 
-            // 2. Android: deviceorientationabsolute (alpha = 0 es Norte, pero gira antihorario)
-            else if (event.alpha !== null) {
-                trueHeading = (360.0 - event.alpha) % 360.0;
-            }
-
-            if (trueHeading !== null) {
-                const screenOffset = getScreenRotation();
-                appState.heading = (trueHeading + screenOffset + 360.0) % 360.0;
-            }
-        }
-
-        async function initHardware() {
-            dom.statusDebug.textContent = 'Solicitando acceso a cámara y GPS...';
-
-            // 1. Permiso de Brújula para iOS 13+
-            if (typeof DeviceOrientationEvent !== 'undefined' &&
-                typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission === 'granted') {
-                        window.addEventListener('deviceorientation', processOrientation, true);
-                    }
-                } catch (e) {
-                    console.error('Permiso iOS orientación denegado:', e);
-                }
-            } else {
-                // Android Chrome / Firefox: escuchar deviceorientationabsolute para rumbo magnético real
-                if ('ondeviceorientationabsolute' in window) {
-                    window.addEventListener('deviceorientationabsolute', processOrientation, true);
-                } else {
-                    window.addEventListener('deviceorientation', processOrientation, true);
-                }
-            }
-
-            // 2. Geolocalización GPS precisa
-            if ('geolocation' in navigator) {
-                navigator.geolocation.watchPosition(
-                    (pos) => {
-                        appState.userLat = pos.coords.latitude;
-                        appState.userLon = pos.coords.longitude;
-                        updateGeoTarget();
-                        dom.statusDebug.textContent = `GPS fijado: ${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
-                    },
-                    (err) => {
-                        console.warn('GPS sin fijar, usando Madrid por defecto:', err.message);
-                        appState.userLat = 40.4168;
-                        appState.userLon = -3.7038;
-                        updateGeoTarget();
-                    },
-                    { enableHighAccuracy: true, maximumAge: 3000 }
-                );
-            } else {
-                appState.userLat = 40.4168;
-                appState.userLon = -3.7038;
-                updateGeoTarget();
-            }
-
-            // 3. Cámara trasera nítida (100% de la pantalla)
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: 'environment' },
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
-                        },
-                        audio: false
-                    });
-                    dom.video.srcObject = stream;
-                    await dom.video.play();
-                } catch (camErr) {
-                    console.warn('Cámara trasera no disponible:', camErr);
-                }
-            }
-
-            // Cerrar modal inicial
-            dom.splash.classList.add('hidden');
-        }
-
-        // ==========================================================================
-        // RENDERIZADO DEL HUD SUPERIOR EN MODO CÁMARA
-        // ==========================================================================
-        function renderArHud(heading, bearing, isAligned) {
-            const pxPerDegree = 4.2;
-            let markersHtml = '';
-
-            // Dibujar marcas graduadas cada 15°
-            const baseDegree = Math.floor(heading / 15) * 15;
-            for (let offset = -75; offset <= 75; offset += 15) {
-                const targetDeg = (baseDegree + offset + 360) % 360;
-                let diff = ((targetDeg - heading + 540) % 360) - 180;
-                const posX = diff * pxPerDegree;
-
-                let tag = `${targetDeg}°`;
-                let isCardinal = false;
-                if (targetDeg === 0) { tag = 'N'; isCardinal = true; }
-                else if (targetDeg === 90) { tag = 'E'; isCardinal = true; }
-                else if (targetDeg === 180) { tag = 'S'; isCardinal = true; }
-                else if (targetDeg === 270) { tag = 'O'; isCardinal = true; }
-
-                markersHtml += `
-                    <div class="absolute top-0 bottom-0 flex flex-col items-center justify-end pb-1"
-                         style="left: calc(50% + ${posX}px); transform: translateX(-50%);">
-                        <span class="text-[9px] font-mono-hud ${isCardinal ? 'text-amber-400 font-extrabold' : 'text-white/60'}">
-                            ${tag}
-                        </span>
-                        <div class="w-px ${isCardinal ? 'h-3 bg-amber-400' : 'h-1.5 bg-white/40'} mt-0.5"></div>
-                    </div>
-                `;
-            }
-
-            // Baliza de Cuenca en la barrita
-            let cuencaDiff = ((bearing - heading + 540) % 360) - 180;
-            const clampedDiff = Math.max(-60, Math.min(60, cuencaDiff));
-            const cuencaX = clampedDiff * pxPerDegree;
-            const badgeBg = isAligned ? 'bg-[#00ff66] text-black font-extrabold' : 'bg-[#ff2244] text-white font-bold';
-
-            markersHtml += `
-                <div class="absolute top-1.5 flex flex-col items-center z-30"
-                     style="left: calc(50% + ${cuencaX}px); transform: translateX(-50%);">
-                    <span class="px-2 py-0.5 rounded-full text-[9px] font-mono-hud uppercase tracking-wider border border-white/20 shadow-md ${badgeBg}">
-                        CUENCA
-                    </span>
-                </div>
-            `;
-
-            dom.arHudTrack.innerHTML = markersHtml;
-        }
-
-        // ==========================================================================
-        // BUCLE PRINCIPAL DE ANIMACIÓN Y SINCRONIZACIÓN (60 FPS)
-        // ==========================================================================
-        function tick() {
-            // Calcular diferencia angular más corta hacia Cuenca (-180 a +180)
-            const shortestDiff = ((appState.bearingToCuenca - appState.heading + 540) % 360) - 180;
-            appState.relativeAngle = shortestDiff;
-            appState.isAligned = Math.abs(shortestDiff) <= ALIGNMENT_THRESHOLD_DEG;
-
-            // Determinar postura: Plano (<45°) vs Vertical (>=45°)
-            appState.isUpright = appState.tilt >= TILT_THRESHOLD_DEG;
-
-            // 1. Alternar capas según postura
-            if (appState.isUpright) {
-                // Modo Cámara AR: Ocultar brújula opaca, mostrar interfaz transparente
-                dom.flatLayer.classList.add('hidden');
-                dom.arLayer.classList.remove('hidden');
-            } else {
-                // Modo Brújula: Mostrar brújula opaca, ocultar visor de cámara
-                dom.flatLayer.classList.remove('hidden');
-                dom.arLayer.classList.add('hidden');
-            }
-
-            // 2. Modificar clase global para cambiar colores a verde (#00ff66) o rojo (#ff2244)
-            if (appState.isAligned) {
-                document.body.classList.add('is-aligned');
-            } else {
-                document.body.classList.remove('is-aligned');
-            }
-
-            // 3. Actualizar Modo Brújula (Móvil Plano)
-            dom.flatCompassCard.style.transform = `rotate(${-appState.heading}deg)`;
-            dom.flatNeedleContainer.style.transform = `rotate(${appState.relativeAngle}deg)`;
-
-            const roundedDiff = Math.round(appState.relativeAngle);
-            dom.flatRelativeAngle.textContent = `${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
-            dom.flatKmLabel.textContent = `${appState.distanceKm} km`;
-            dom.dataHeading.textContent = `${String(Math.round(appState.heading)).padStart(3, '0')}°`;
-            dom.dataBearing.textContent = `${String(Math.round(appState.bearingToCuenca)).padStart(3, '0')}°`;
-            dom.dataTilt.textContent = `${appState.tilt}°`;
-
-            if (appState.isAligned) {
-                dom.flatTurnLabel.textContent = '¡EN CUENCA!';
-                dom.flatTurnLabel.className = 'text-[9px] font-mono-hud uppercase text-emerald-400 font-extrabold';
-                dom.flatPointerTip.className = 'w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-emerald-400 transition-colors';
-                dom.flatOuterCircle.className = 'absolute inset-0 rounded-full border-2 border-emerald-400 shadow-[0_0_30px_rgba(0,255,102,0.4)] transition-colors duration-200';
-                dom.flatNeedlePoly.setAttribute('fill', '#00ff66');
-                dom.flatNeedleLine.setAttribute('stroke', '#00ff66');
-            } else {
-                dom.flatTurnLabel.textContent = roundedDiff > 0 ? 'DERECHA ▶' : '◀ IZQUIERDA';
-                dom.flatTurnLabel.className = 'text-[9px] font-mono-hud uppercase text-rose-400 font-semibold';
-                dom.flatPointerTip.className = 'w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-rose-500 transition-colors';
-                dom.flatOuterCircle.className = 'absolute inset-0 rounded-full border-2 border-slate-800 transition-colors duration-200';
-                dom.flatNeedlePoly.setAttribute('fill', '#ff2244');
-                dom.flatNeedleLine.setAttribute('stroke', '#ff2244');
-            }
-
-            // 4. Actualizar Modo Cámara AR
-            renderArHud(appState.heading, appState.bearingToCuenca, appState.isAligned);
-            dom.arKmPill.textContent = `${appState.distanceKm} km`;
-            dom.arAngleDiffReadout.textContent = `Desviación: ${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
-
-            if (appState.isAligned) {
-                dom.arHintText.textContent = '● ¡MIRANDO A CUENCA!';
-                dom.arHintText.className = 'text-emerald-400 font-extrabold';
-                dom.centerBadge.textContent = '¡MIRANDO A CUENCA!';
-            } else {
-                const hintDirection = roundedDiff > 0 ? `Cuenca a la derecha (${Math.abs(roundedDiff)}°) ▶` : `◀ Cuenca a la izquierda (${Math.abs(roundedDiff)}°)`;
-                dom.arHintText.textContent = hintDirection;
-                dom.arHintText.className = 'text-rose-400 font-bold';
-                dom.centerBadge.textContent = `Desviación: ${Math.abs(roundedDiff)}°`;
-                dom.centerBadge.style.backgroundColor = '';
-                dom.centerBadge.style.color = '';
-                dom.centerBadge.style.borderColor = '';
-                dom.centerBadge.style.boxShadow = '';
-            }
-
-            requestAnimationFrame(tick);
-        }
-
-        // ==========================================================================
-        // EVENTOS DE BOTONES
-        // ==========================================================================
-        dom.btnActivate.addEventListener('click', () => {
-            initHardware();
-        });
-
-        // Alternar forma central entre la circunferencia y el SVG de Casas Colgadas
-        dom.btnToggleShape.addEventListener('click', () => {
-            appState.useCasasSvg = !appState.useCasasSvg;
-            if (appState.useCasasSvg) {
-                dom.reticleCircle.classList.add('hidden');
-                dom.reticleCasas.classList.remove('hidden');
-                dom.toggleLabel.textContent = 'Ver Círculo';
-            } else {
-                dom.reticleCasas.classList.add('hidden');
-                dom.reticleCircle.classList.remove('hidden');
-                dom.toggleLabel.textContent = 'Ver Casas Colgadas';
-            }
-        });
-
-        window.onload = function () {
-            requestAnimationFrame(tick);
-        };
-    </script>
+        // La aguja gira hacia el rumbo de Cuenca compensando el giro del teléfono
+        let needleAngle = (targetBearing - heading + 360) % 360;
+        needleSvg.style.transform = `rotate(${needleAngle}deg)`;
+      }
+    }
+  </script>
 </body>
 </html>
