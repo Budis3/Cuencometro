@@ -1,27 +1,26 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mirando a Cuenca - Localizador AR & Brújula</title>
+    <title>Mirando a Cuenca - AR & Brújula</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter & JetBrains Mono para datos del HUD -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
     
     <style>
         * {
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
-        }
-        body, html {
             margin: 0;
             padding: 0;
+        }
+        html, body {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #090d16;
+            background-color: #05070d;
             font-family: 'Inter', sans-serif;
             color: #ffffff;
         }
@@ -29,474 +28,340 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        /* Cámara Trasera sin obstrucciones: 100% nítida a pantalla completa */
+        #camera-stream {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+            background: #000000;
+        }
+
+        /* Capa AR por encima de la cámara */
+        #ar-overlay-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            background: transparent;
+        }
+
         /* ==========================================================================
-           ESTILOS DINÁMICOS DEL VISOR CENTRAL (ROJO VS VERDE)
-           Aquí es donde tanto el círculo como el SVG de las Casas Colgadas
-           cambian de color y brillo automáticamente.
+           TRAZO DEL VISOR (ROJO VS VERDE BRILLANTE)
            ========================================================================== */
-        .target-outline {
+        .target-reticle-stroke {
             fill: none;
-            stroke: #ff3b30; /* Rojo cuando NO apunta a Cuenca */
+            stroke: #ff2244; /* Rojo neón cuando no apunta */
             stroke-width: 3.5;
             stroke-linecap: round;
             stroke-linejoin: round;
-            filter: drop-shadow(0 0 10px rgba(255, 59, 48, 0.75));
-            transition: stroke 0.25s ease, filter 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 0 10px rgba(255, 34, 68, 0.85));
+            transition: stroke 0.15s ease, filter 0.15s ease;
         }
 
-        /* Clase activa cuando el usuario apunta a Cuenca (±8 grados) */
-        .is-aligned .target-outline {
-            stroke: #34c759; /* Verde intenso cuando SÍ apunta a Cuenca */
-            filter: drop-shadow(0 0 18px rgba(52, 199, 89, 0.95));
+        .is-aligned .target-reticle-stroke {
+            stroke: #00ff66 !important; /* Verde intenso cuando apunta a Cuenca */
+            filter: drop-shadow(0 0 18px rgba(0, 255, 102, 0.95)) !important;
         }
 
-        .is-aligned #ar-reticle-wrapper {
-            transform: scale(1.06);
+        .is-aligned #center-badge {
+            background-color: rgba(0, 255, 102, 0.95) !important;
+            color: #050811 !important;
+            border-color: #00ff66 !important;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.6) !important;
         }
 
-        /* Animación suave para la brújula y transiciones de modo */
-        .mode-transition {
-            transition: opacity 0.4s ease, transform 0.4s ease;
+        /* Centrado absoluto perfecto para agujas y discos superpuestos */
+        .origin-exact-center {
+            transform-origin: 50% 50%;
         }
 
-        /* Fondo de rejilla táctica para el modo plano */
-        .tactical-grid {
-            background-size: 32px 32px;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-        }
-
-        /* Cinta superior de brújula (HUD Tape) */
-        .compass-tape-mask {
-            mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
+        .compass-mask {
+            mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
         }
     </style>
 </head>
-<body class="relative w-full h-full select-none">
+<body class="relative w-full h-full">
 
     <!-- ==========================================================================
-         1. CAPA DE VÍDEO DE CÁMARA TRASERA (Fondo para el Modo Vertical AR)
+         1. STREAM DE CÁMARA (Sin difuminados ni filtros morados)
          ========================================================================== -->
-    <video id="camera-stream" class="fixed inset-0 w-full h-full object-cover z-0 opacity-0 transition-opacity duration-500 pointer-events-none" autoplay playsinline muted></video>
-    
-    <!-- Fondo alternativo estático por si se usa en PC sin cámara o en modo demo -->
-    <div id="ar-fallback-bg" class="fixed inset-0 w-full h-full z-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-gradient-to-b from-slate-900 via-indigo-950 to-amber-950/40 flex items-center justify-center">
-        <div class="w-full h-1/2 border-b border-white/10 absolute top-0"></div>
-    </div>
+    <video id="camera-stream" autoplay playsinline muted></video>
 
     <!-- ==========================================================================
-         2. PANTALLA DE INICIO / DESBLOQUEO DE PERMISOS (Obligatorio en iOS/HTTPS)
+         2. PANTALLA DE INICIO / PETICIÓN DE PERMISOS (Requerido para iOS & GPS)
          ========================================================================== -->
-    <div id="splash-screen" class="fixed inset-0 z-50 bg-slate-950 tactical-grid flex flex-col items-center justify-between p-6 text-center overflow-y-auto">
-        <div class="w-full max-w-md my-auto py-4">
-            <!-- Icono decorativo inicial -->
-            <div class="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-slate-900 border border-slate-700 shadow-2xl">
-                <svg class="w-14 h-14 text-emerald-400" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="50" cy="50" r="42" stroke-opacity="0.3"/>
-                    <polygon points="50,14 61,50 50,43 39,50" fill="currentColor"/>
-                    <polygon points="50,86 61,50 50,57 39,50" fill="rgba(255,255,255,0.2)" stroke="none"/>
+    <div id="splash-modal" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-between p-6 text-center">
+        <div class="w-full max-w-sm my-auto flex flex-col items-center">
+            
+            <div class="w-20 h-20 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-5 shadow-2xl">
+                <svg class="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
+                    <polygon points="12,2 15,12 12,10 9,12" fill="currentColor"/>
+                    <polygon points="12,22 15,12 12,14 9,12" fill="rgba(255,255,255,0.3)"/>
                 </svg>
-                <span class="absolute -bottom-2 px-2.5 py-0.5 text-[10px] font-mono-hud font-bold uppercase tracking-widest bg-emerald-500 text-slate-950 rounded-full">
-                    AR + GPS
-                </span>
             </div>
 
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
-                Mirando a <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Cuenca</span>
+            <h1 class="text-3xl font-extrabold text-white mb-2 tracking-tight">
+                Mirando a <span class="text-emerald-400">Cuenca</span>
             </h1>
-            <p class="text-slate-400 text-sm sm:text-base mb-6 leading-relaxed">
-                Descubre en tiempo real dónde están las <strong class="text-slate-200">Casas Colgadas de Cuenca</strong> desde cualquier punto del planeta.
+            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+                Detector de orientación geográfica en tiempo real hacia las Casas Colgadas de Cuenca.
             </p>
 
-            <!-- Explicación de los 2 modos -->
-            <div class="grid grid-cols-2 gap-3 mb-7 text-left">
-                <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                    <div class="text-amber-400 font-bold text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                        <span>✋</span> Móvil Plano
-                    </div>
-                    <p class="text-xs text-slate-400 leading-normal">
-                        En la palma de tu mano: activa la <strong>Brújula Clásica</strong> apuntando directo a Cuenca.
-                    </p>
+            <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 text-left text-xs text-slate-300 space-y-2 mb-6">
+                <div class="flex items-center gap-2 text-amber-300 font-bold">
+                    <span>✋</span>
+                    <span>Móvil plano en la palma:</span>
+                    <span class="text-slate-400 font-normal">Brújula directa</span>
                 </div>
-                <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
-                    <div class="text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                        <span>👁️</span> Móvil Vertical
-                    </div>
-                    <p class="text-xs text-slate-400 leading-normal">
-                        Frente a tus ojos: activa la <strong>Cámara AR</strong> con cinta superior y visor rojo/verde.
-                    </p>
+                <div class="flex items-center gap-2 text-emerald-300 font-bold">
+                    <span>👁️</span>
+                    <span>Móvil levantado:</span>
+                    <span class="text-slate-400 font-normal">Cámara AR completa</span>
                 </div>
             </div>
 
-            <!-- Botón principal de desbloqueo de hardware -->
-            <button id="btn-start-sensors" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] text-slate-950 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 mb-3 cursor-pointer">
+            <button id="btn-activate" class="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                 </svg>
                 <span>Activar Sensores y Cámara</span>
             </button>
 
-            <!-- Botón secundario para entrar directamente en modo Simulación (PC / Pruebas) -->
-            <button id="btn-start-demo" class="w-full py-3 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-700 transition cursor-pointer">
-                Probar en Modo Simulación (PC / Sin permisos)
-            </button>
-
-            <div id="permission-msg" class="mt-3 text-xs text-amber-400 hidden"></div>
+            <div id="status-debug-text" class="mt-4 text-xs font-mono-hud text-slate-500">
+                Esperando activación...
+            </div>
         </div>
 
-        <footer class="text-[11px] text-slate-500 font-mono-hud">
-            Objetivo: Casas Colgadas (40.0776° N, 2.1296° W) · Tolerancia ±8°
-        </footer>
+        <div class="text-[11px] text-slate-600 font-mono-hud">
+            Objetivo: Casas Colgadas (40.0783° N, 2.1287° W)
+        </div>
     </div>
 
     <!-- ==========================================================================
-         3. MODO 1: MÓVIL PLANO EN LA MANO (MODO BRÚJULA CLÁSICA)
+         3. MODO BRÚJULA: MÓVIL PLANO EN LA PALMA (Fondo oscuro, aguja centrada)
          ========================================================================== -->
-    <section id="flat-compass-view" class="fixed inset-0 z-20 bg-slate-950 tactical-grid flex flex-col items-center justify-between p-5 mode-transition">
+    <div id="flat-compass-layer" class="fixed inset-0 z-20 bg-slate-950 flex flex-col items-center justify-between p-5">
         
-        <!-- Cabecera informativa en modo plano -->
-        <div class="w-full max-w-md flex items-center justify-between bg-slate-900/90 border border-slate-800/90 px-4 py-2.5 rounded-2xl backdrop-blur-md mt-12 sm:mt-2">
+        <!-- Barra superior modo plano -->
+        <div class="w-full max-w-sm flex items-center justify-between bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl mt-2">
             <div>
-                <span class="text-[10px] font-mono-hud uppercase tracking-widest text-amber-400 block">Modo Brújula (Móvil Plano)</span>
-                <h2 class="text-sm font-bold text-white">Levanta el móvil para Cámara AR</h2>
+                <span class="text-[10px] font-mono-hud uppercase text-amber-400 font-bold block">Móvil Plano (Palma)</span>
+                <span class="text-xs text-slate-300">Levanta para activar Cámara AR</span>
             </div>
             <div class="text-right font-mono-hud">
-                <span id="flat-distance" class="text-base font-bold text-emerald-400">--- km</span>
-                <span class="text-[10px] text-slate-400 block">a Cuenca</span>
+                <span id="flat-km-label" class="text-sm font-bold text-emerald-400">--- km</span>
             </div>
         </div>
 
-        <!-- Roseta y Aguja Principal hacia Cuenca -->
-        <div class="relative flex items-center justify-center my-auto">
-            <!-- Halo exterior que brilla en verde cuando apuntas a Cuenca -->
-            <div id="flat-glow-ring" class="w-72 h-72 sm:w-80 sm:h-80 rounded-full border-2 border-rose-500/40 flex items-center justify-center transition-colors duration-300 relative shadow-2xl">
-                
-                <!-- Marca fija superior del teléfono (Línea de fe) -->
-                <div class="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-30">
-                    <div id="flat-top-triangle" class="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-rose-500 transition-colors"></div>
-                </div>
-
-                <!-- Disco del Norte Magnético (Gira con el rumbo del móvil) -->
-                <div id="flat-north-dial" class="w-64 h-64 sm:w-72 sm:h-72 rounded-full border border-slate-700/80 bg-slate-900/70 relative flex items-center justify-center">
-                    <!-- Puntos cardinales reales -->
-                    <span class="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-bold text-slate-400">N</span>
-                    <span class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-bold text-slate-600">S</span>
-                    <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-600">E</span>
-                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-600">O</span>
-                </div>
-
-                <!-- AGUJA PRINCIPAL DE CUENCA (Apunta directamente a Cuenca respecto al móvil) -->
-                <div id="flat-cuenca-needle" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <svg class="w-60 h-60 sm:w-68 sm:h-68" viewBox="0 0 200 200">
-                        <!-- Cola de la aguja -->
-                        <line x1="100" y1="100" x2="100" y2="165" stroke="rgba(148, 163, 184, 0.35)" stroke-width="4" stroke-linecap="round"/>
-                        <!-- Punta principal hacia Cuenca -->
-                        <line id="flat-needle-line" x1="100" y1="100" x2="100" y2="24" stroke="#ff3b30" stroke-width="5" stroke-linecap="round"/>
-                        <polygon id="flat-needle-head" points="100,12 90,34 100,28 110,34" fill="#ff3b30"/>
-                        <!-- Etiqueta CUENCA en la aguja -->
-                        <rect x="68" y="42" width="64" height="18" rx="9" fill="#0f172a" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
-                        <text x="100" y="54" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="bold" font-family="JetBrains Mono, monospace">CUENCA</text>
-                    </svg>
-                </div>
-
-                <!-- Centro de la brújula con lectura digital -->
-                <div class="w-24 h-24 rounded-full bg-slate-950 border border-slate-700 flex flex-col items-center justify-center z-20 shadow-inner">
-                    <span id="flat-delta-deg" class="text-xl font-mono-hud font-bold text-white">--°</span>
-                    <span id="flat-status-label" class="text-[10px] font-semibold uppercase tracking-wider text-rose-400 text-center px-1">Gira</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pie de datos en modo plano -->
-        <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex items-center justify-around text-xs font-mono-hud mb-12 sm:mb-2">
-            <div class="text-center">
-                <span class="text-slate-500 block text-[10px]">TU RUMBO</span>
-                <span id="flat-user-heading" class="text-white font-bold">000°</span>
-            </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div class="text-center">
-                <span class="text-slate-500 block text-[10px]">AZIMUT CUENCA</span>
-                <span id="flat-target-bearing" class="text-amber-400 font-bold">000°</span>
-            </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div class="text-center">
-                <span class="text-slate-500 block text-[10px]">INCLINACIÓN</span>
-                <span id="flat-tilt-readout" class="text-cyan-400 font-bold">0°</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==========================================================================
-         4. MODO 2: MÓVIL LEVANTADO FRENTE A LOS OJOS (MODO CÁMARA AR)
-         ========================================================================== -->
-    <section id="upright-ar-view" class="fixed inset-0 z-30 pointer-events-none flex flex-col items-center justify-between p-4 opacity-0 mode-transition">
-        
-        <!-- BARRITA SUPERIOR DE BRÚJULA (HUD Compass Tape) -->
-        <div class="w-full max-w-lg mt-11 sm:mt-2 flex flex-col items-center">
-            <div class="relative w-full h-14 bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-2xl overflow-hidden compass-tape-mask shadow-xl">
-                <!-- Marcador central fijo (hacia dónde mira la cámara) -->
-                <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-white/80 z-20"></div>
-                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white z-20"></div>
-
-                <!-- Contenedor dinámico de marcas de la brújula y el icono de Cuenca -->
-                <div id="ar-tape-track" class="relative w-full h-full flex items-center">
-                    <!-- Se renderiza por JS a 60fps para máxima fluidez -->
-                </div>
-            </div>
-
-            <!-- Píldora indicadora debajo de la barrita -->
-            <div class="mt-2 px-3.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/15 flex items-center gap-3 text-xs font-mono-hud shadow-md">
-                <span id="ar-direction-hint" class="text-rose-400 font-bold">◀ Gira hacia Cuenca</span>
-                <span class="text-slate-600">|</span>
-                <span id="ar-distance-pill" class="text-emerald-400 font-bold">--- km</span>
-            </div>
-        </div>
-
-        <!-- VISOR OBJETIVO CENTRAL (Círculo o SVG Casas Colgadas en Rojo / Verde) -->
-        <div id="ar-reticle-wrapper" class="relative flex flex-col items-center justify-center my-auto transition-transform duration-300">
+        <!-- CONTENEDOR GEOMÉTRICAMENTE CENTRADO DE LA BRÚJULA -->
+        <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center my-auto">
             
-            <!-- OPCIÓN A: CIRCUNFERENCIA PURA (Por defecto como pidió el usuario) -->
-            <svg id="reticle-circle" class="w-56 h-56 sm:w-64 sm:h-64 overflow-visible" viewBox="0 0 200 200">
-                <!-- Solo la circunferencia: roja cuando no apunta, verde cuando apunta a Cuenca -->
-                <circle class="target-outline" cx="100" cy="100" r="78" />
-                <!-- Pequeñas muescas sutiles en los 4 ejes de la circunferencia -->
-                <line class="target-outline" x1="100" y1="14" x2="100" y2="22" />
-                <line class="target-outline" x1="100" y1="178" x2="100" y2="186" />
-                <line class="target-outline" x1="14" y1="100" x2="22" y2="100" />
-                <line class="target-outline" x1="178" y1="100" x2="186" y2="100" />
-            </svg>
+            <!-- Aro exterior decorativo -->
+            <div id="flat-outer-circle" class="absolute inset-0 rounded-full border-2 border-slate-800 transition-colors duration-200"></div>
 
-            <!-- ======================================================================
-                 OPCIÓN B: SILUETA SVG DE LAS CASAS COLGADAS DE CUENCA
-                 Usa exactamente la misma clase `.target-outline` (stroke rojo -> verde).
-                 Cuando tengas tu diseño definitivo en SVG, solo tienes que pegar tus
-                 etiquetas <path> o <polygon> aquí dentro con class="target-outline".
-                 ====================================================================== -->
-            <svg id="reticle-casas-svg" class="w-64 h-64 sm:w-72 sm:h-72 overflow-visible hidden" viewBox="0 0 240 240">
-                <!-- Marco circular discontinuo exterior -->
-                <circle class="target-outline" cx="120" cy="120" r="102" stroke-dasharray="8 8" stroke-width="2" />
+            <!-- Marca fija del teléfono (Línea de proa) -->
+            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 flex flex-col items-center z-30">
+                <div id="flat-pointer-tip" class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-rose-500 transition-colors"></div>
+            </div>
+
+            <!-- Disco del Norte y Cuadrante Magnético (Gira según el rumbo del móvil) -->
+            <div id="flat-compass-card" class="absolute inset-2 rounded-full bg-slate-900/95 border border-slate-700/80 origin-exact-center flex items-center justify-center">
+                <!-- Puntos cardinales exactos -->
+                <span class="absolute top-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-extrabold text-rose-500">N</span>
+                <span class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-mono-hud font-bold text-slate-500">S</span>
+                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-500">E</span>
+                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono-hud font-bold text-slate-500">O</span>
                 
-                <!-- Acantilado / Hoz del Huécar (Roca donde cuelgan las casas) -->
-                <path class="target-outline" d="M 42 195 L 58 168 L 54 148 L 65 132 L 175 132 L 185 152 L 178 174 L 196 195" />
-                <path class="target-outline" d="M 75 152 L 95 168 M 145 150 L 160 172 M 112 158 L 122 185" stroke-width="2.5" />
+                <!-- Marcas radiales de grados -->
+                <div class="w-full h-full rounded-full border border-dashed border-slate-700/40"></div>
+            </div>
 
-                <!-- Estructura principal de las Casas Colgadas (3 cuerpos escalonados) -->
-                <path class="target-outline" d="M 65 132 L 65 78 L 102 60 L 102 132" />
-                <path class="target-outline" d="M 102 132 L 102 52 L 142 66 L 142 132" />
-                <path class="target-outline" d="M 142 132 L 142 74 L 175 62 L 175 132" />
+            <!-- AGUJA DIRECTA A CUENCA (Centrada al milímetro con SVG simétrico 200x200) -->
+            <div id="flat-needle-container" class="absolute inset-0 origin-exact-center pointer-events-none flex items-center justify-center">
+                <svg class="w-full h-full origin-exact-center" viewBox="0 0 200 200">
+                    <!-- Flecha hacia Cuenca -->
+                    <polygon id="flat-needle-poly" points="100,20 110,95 100,85 90,95" fill="#ff2244" class="transition-colors duration-150"/>
+                    <line id="flat-needle-line" x1="100" y1="85" x2="100" y2="155" stroke="#ff2244" stroke-width="3" stroke-linecap="round"/>
+                    
+                    <!-- Pespunte y distintivo Cuenca en la aguja -->
+                    <rect x="74" y="44" width="52" height="16" rx="8" fill="#090d16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+                    <text x="100" y="55" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="bold" font-family="'JetBrains Mono', monospace">CUENCA</text>
+                </svg>
+            </div>
 
-                <!-- Tejados tradicionales inclinados con aleros -->
-                <path class="target-outline" d="M 58 81 L 104 58 M 98 54 L 146 68 M 138 76 L 181 60" stroke-width="4.5" />
-
-                <!-- Icónicos balcones volados de madera ("colgados" sobre el acantilado) -->
-                <rect class="target-outline" x="71" y="96" width="24" height="16" />
-                <line class="target-outline" x1="71" y1="112" x2="65" y2="124" stroke-width="2.5" />
-                <line class="target-outline" x1="95" y1="112" x2="102" y2="124" stroke-width="2.5" />
-
-                <rect class="target-outline" x="108" y="88" width="28" height="18" />
-                <line class="target-outline" x1="108" y1="106" x2="102" y2="120" stroke-width="2.5" />
-                <line class="target-outline" x1="136" y1="106" x2="142" y2="120" stroke-width="2.5" />
-
-                <rect class="target-outline" x="148" y="98" width="21" height="15" />
-                <line class="target-outline" x1="148" y1="113" x2="142" y2="124" stroke-width="2.5" />
-                <line class="target-outline" x1="169" y1="113" x2="175" y2="124" stroke-width="2.5" />
-
-                <!-- Ventanas superiores y arcos -->
-                <path class="target-outline" d="M 78 84 L 78 74 L 88 74 L 88 84" stroke-width="2.5" />
-                <path class="target-outline" d="M 116 76 A 6 6 0 0 1 128 76 L 128 82 L 116 82 Z" stroke-width="2.5" />
-                <path class="target-outline" d="M 154 86 L 154 76 L 164 76 L 164 86" stroke-width="2.5" />
-            </svg>
-
-            <!-- Etiqueta flotante de estado en el centro -->
-            <div id="ar-center-badge" class="mt-4 px-4 py-1.5 rounded-full bg-slate-950/85 border border-rose-500/50 text-rose-400 font-mono-hud text-xs font-bold uppercase tracking-widest shadow-lg transition-all">
-                Buscando Cuenca...
+            <!-- Núcleo central con lectura digital del ángulo relativo -->
+            <div class="absolute w-20 h-20 rounded-full bg-slate-950 border border-slate-700 flex flex-col items-center justify-center z-20 shadow-xl">
+                <span id="flat-relative-angle" class="text-base font-mono-hud font-bold text-white">0°</span>
+                <span id="flat-turn-label" class="text-[9px] font-mono-hud uppercase text-rose-400 font-semibold">Gira</span>
             </div>
         </div>
 
-        <!-- Pie del modo AR -->
-        <div class="w-full max-w-md mb-12 sm:mb-2 flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-950/75 backdrop-blur-md border border-white/15 text-xs font-mono-hud">
-            <span>MODO CÁMARA AR</span>
-            <span id="ar-Live-Angles" class="text-slate-300">Desviación: --°</span>
+        <!-- Panel de datos inferior del modo plano -->
+        <div class="w-full max-w-sm bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center justify-around text-xs font-mono-hud mb-2">
+            <div class="text-center">
+                <span class="text-[10px] text-slate-500 block">RUMBO MÓVIL</span>
+                <span id="data-heading" class="text-white font-bold">---°</span>
+            </div>
+            <div class="h-6 w-px bg-slate-800"></div>
+            <div class="text-center">
+                <span class="text-[10px] text-slate-500 block">AZIMUT CUENCA</span>
+                <span id="data-bearing" class="text-amber-400 font-bold">---°</span>
+            </div>
+            <div class="h-6 w-px bg-slate-800"></div>
+            <div class="text-center">
+                <span class="text-[10px] text-slate-500 block">INCLINACIÓN</span>
+                <span id="data-tilt" class="text-cyan-400 font-bold">0°</span>
+            </div>
         </div>
-    </section>
-
-    <!-- ==========================================================================
-         5. BARRA SUPERIOR FLOTANTE DE UTILIDADES (Cambiar Círculo/SVG y Modo Demo)
-         ========================================================================== -->
-    <div id="top-utility-bar" class="fixed top-2.5 left-3 right-3 z-40 flex items-center justify-between pointer-events-auto hidden">
-        <!-- Botón para alternar entre Circunferencia y SVG de las Casas Colgadas -->
-        <button id="btn-toggle-svg" class="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 shadow-lg backdrop-blur-md cursor-pointer active:scale-95 transition">
-            <span id="svg-toggle-icon">🏛️</span>
-            <span id="svg-toggle-text">Ver SVG Casas Colgadas</span>
-        </button>
-
-        <!-- Botón para abrir/cerrar el Simulador de Sensores -->
-        <button id="btn-toggle-sim" class="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-amber-500/40 text-xs font-mono-hud font-bold text-amber-300 flex items-center gap-1.5 shadow-lg backdrop-blur-md cursor-pointer active:scale-95 transition">
-            <span>🎛️</span>
-            <span id="sim-badge-text">Simulador</span>
-        </button>
     </div>
 
     <!-- ==========================================================================
-         6. PANEL DE SIMULACIÓN / DEMO (Para probar en PC o sin moverse)
+         4. MODO CÁMARA AR: MÓVIL LEVANTADO (Visor transparente sobre la cámara)
          ========================================================================== -->
-    <aside id="sim-drawer" class="fixed bottom-3 right-3 left-3 sm:left-auto sm:w-80 z-40 bg-slate-900/95 backdrop-blur-xl border border-amber-500/40 rounded-2xl p-4 shadow-2xl hidden">
-        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-            <div class="flex items-center gap-2">
-                <input type="checkbox" id="chk-sim-active" class="w-4 h-4 accent-amber-400 rounded cursor-pointer">
-                <label for="chk-sim-active" class="text-xs font-bold uppercase tracking-wider text-amber-300 cursor-pointer">
-                    Forzar Datos Simulados
-                </label>
+    <div id="ar-overlay-layer" class="flex flex-col items-center justify-between p-4 hidden">
+        
+        <!-- BARRITA SUPERIOR TIPO HUD (Compass Tape) -->
+        <div class="w-full max-w-md mt-2 flex flex-col items-center">
+            
+            <div class="relative w-full h-12 bg-slate-950/70 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden compass-mask shadow-lg">
+                <!-- Línea de mira central fija -->
+                <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-white z-20"></div>
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-white z-20"></div>
+
+                <!-- Pista dinámica con las marcas y la baliza de Cuenca -->
+                <div id="ar-hud-track" class="relative w-full h-full flex items-center"></div>
             </div>
-            <button id="btn-close-sim" class="text-slate-400 hover:text-white text-xs font-bold px-2 py-0.5 rounded bg-slate-800 cursor-pointer">✕</button>
+
+            <!-- Etiqueta de proximidad / desviación debajo de la cinta -->
+            <div class="mt-2 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-sm border border-white/15 flex items-center gap-3 text-xs font-mono-hud shadow">
+                <span id="ar-hint-text" class="text-rose-400 font-bold">Buscando Cuenca...</span>
+                <span class="text-slate-600">|</span>
+                <span id="ar-km-pill" class="text-emerald-400 font-bold">--- km</span>
+            </div>
         </div>
 
-        <div class="space-y-3 text-xs">
-            <!-- Slider de Postura (Inclinación 0° plano -> 90° frente a los ojos) -->
-            <div>
-                <div class="flex justify-between font-mono-hud mb-1">
-                    <span class="text-slate-300">Postura (Inclinación):</span>
-                    <span id="sim-tilt-val" class="text-cyan-400 font-bold">75° (Vertical AR)</span>
-                </div>
-                <input type="range" id="slider-tilt" min="0" max="90" value="75" class="w-full accent-cyan-400 cursor-pointer">
-                <div class="flex justify-between text-[10px] text-slate-500 mt-0.5">
-                    <span>0° (En la palma)</span>
-                    <span>Umbral 45°</span>
-                    <span>90° (Frente a ojos)</span>
-                </div>
-            </div>
+        <!-- VISOR CENTRAL: CIRCUNFERENCIA O SVG CASAS COLGADAS -->
+        <div class="relative flex flex-col items-center justify-center my-auto">
+            
+            <!-- OPCIÓN 1: CIRCUNFERENCIA PURA -->
+            <svg id="reticle-circle" class="w-56 h-56 sm:w-64 sm:h-64 overflow-visible" viewBox="0 0 200 200">
+                <circle class="target-reticle-stroke" cx="100" cy="100" r="80" />
+                <line class="target-reticle-stroke" x1="100" y1="12" x2="100" y2="20" />
+                <line class="target-reticle-stroke" x1="100" y1="180" x2="100" y2="188" />
+                <line class="target-reticle-stroke" x1="12" y1="100" x2="20" y2="100" />
+                <line class="target-reticle-stroke" x1="180" y1="100" x2="188" y2="100" />
+            </svg>
 
-            <!-- Slider de Brújula / Rumbo -->
-            <div>
-                <div class="flex justify-between font-mono-hud mb-1">
-                    <span class="text-slate-300">Rumbo Brújula:</span>
-                    <span id="sim-heading-val" class="text-emerald-400 font-bold">105°</span>
-                </div>
-                <input type="range" id="slider-heading" min="0" max="359" value="105" class="w-full accent-emerald-400 cursor-pointer">
-                <div class="flex justify-between items-center mt-1">
-                    <span class="text-[10px] text-slate-500">Gira para buscar Cuenca</span>
-                    <button id="btn-snap-cuenca" class="text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-semibold cursor-pointer">
-                        Apuntar directo a Cuenca
-                    </button>
-                </div>
-            </div>
+            <!-- OPCIÓN 2: SVG CASAS COLGADAS DE CUENCA -->
+            <svg id="reticle-casas" class="w-64 h-64 sm:w-72 sm:h-72 overflow-visible hidden" viewBox="0 0 240 240">
+                <!-- Marco exterior -->
+                <circle class="target-reticle-stroke" cx="120" cy="120" r="102" stroke-dasharray="6 6" stroke-width="2" />
+                <!-- Hoz del Huécar y acantilado -->
+                <path class="target-reticle-stroke" d="M 40 195 L 60 165 L 56 145 L 66 130 L 174 130 L 184 150 L 178 172 L 200 195" />
+                <path class="target-reticle-stroke" d="M 75 150 L 95 166 M 145 148 L 160 170 M 112 155 L 122 182" stroke-width="2" />
+                <!-- Cuerpos de las Casas Colgadas -->
+                <path class="target-reticle-stroke" d="M 66 130 L 66 78 L 102 60 L 102 130" />
+                <path class="target-reticle-stroke" d="M 102 130 L 102 50 L 142 64 L 142 130" />
+                <path class="target-reticle-stroke" d="M 142 130 L 142 74 L 174 62 L 174 130" />
+                <!-- Tejados -->
+                <path class="target-reticle-stroke" d="M 60 80 L 104 58 M 98 52 L 146 66 M 138 74 L 180 60" stroke-width="4" />
+                <!-- Balcones de madera volados -->
+                <rect class="target-reticle-stroke" x="72" y="96" width="22" height="15" />
+                <line class="target-reticle-stroke" x1="72" y1="111" x2="66" y2="122" stroke-width="2" />
+                <line class="target-reticle-stroke" x1="94" y1="111" x2="102" y2="122" stroke-width="2" />
+                <rect class="target-reticle-stroke" x="108" y="88" width="26" height="17" />
+                <line class="target-reticle-stroke" x1="108" y1="105" x2="102" y2="118" stroke-width="2" />
+                <line class="target-reticle-stroke" x1="134" y1="105" x2="142" y2="118" stroke-width="2" />
+                <rect class="target-reticle-stroke" x="148" y="98" width="20" height="14" />
+                <line class="target-reticle-stroke" x1="148" y1="112" x2="142" y2="122" stroke-width="2" />
+                <line class="target-reticle-stroke" x1="168" y1="112" x2="174" y2="122" stroke-width="2" />
+            </svg>
 
-            <!-- Selector de ciudad de origen GPS simulada -->
-            <div class="pt-1 border-t border-slate-800 flex items-center justify-between">
-                <span class="text-slate-400 text-[11px]">Origen GPS:</span>
-                <select id="select-sim-city" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-mono-hud">
-                    <option value="40.4168,-3.7038">Madrid (106° · 138 km)</option>
-                    <option value="39.4699,-0.3763">Valencia (294° · 164 km)</option>
-                    <option value="41.3874,2.1686">Barcelona (248° · 389 km)</option>
-                    <option value="37.3891,-5.9845">Sevilla (49° · 448 km)</option>
-                </select>
+            <!-- Distintivo central dinámico -->
+            <div id="center-badge" class="mt-4 px-4 py-1.5 rounded-full bg-slate-950/80 border border-rose-500 text-rose-400 font-mono-hud text-xs font-bold uppercase tracking-wider transition-all duration-200">
+                Apunta a Cuenca
             </div>
         </div>
-    </aside>
+
+        <!-- Pie AR -->
+        <div class="w-full max-w-sm mb-2 flex items-center justify-between px-4 py-2 rounded-xl bg-slate-950/70 backdrop-blur-sm border border-white/10 text-[11px] font-mono-hud text-slate-300">
+            <span>CÁMARA AR</span>
+            <span id="ar-angle-diff-readout">Desviación: ---°</span>
+        </div>
+    </div>
+
+    <!-- BOTÓN FLOTANTE PARA CAMBIAR ENTRE CÍRCULO Y SVG DE CASAS COLGADAS -->
+    <button id="btn-toggle-shape" class="fixed top-3 left-3 z-30 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-white border border-white/20 text-xs font-semibold backdrop-blur-md transition flex items-center gap-1.5 cursor-pointer pointer-events-auto">
+        <span id="toggle-icon">🏛️</span>
+        <span id="toggle-label">Ver Casas Colgadas</span>
+    </button>
 
     <!-- ==========================================================================
-         LÓGICA JAVASCRIPT: GEODESIA, SENSORES, ORIENTACIÓN Y RENDERIZADO
+         LÓGICA JAVASCRIPT: GEODESIA, ORIENTACIÓN Y SENSOR ABSOLUTO
          ========================================================================== -->
     <script>
-        // 1. CONSTANTES GEOGRÁFICAS DE CUENCA (Casas Colgadas de Cuenca)
-        const CUENCA_COORDS = {
-            lat: 40.0776,
-            lon: -2.1296
-        };
-        const ALIGNMENT_TOLERANCE_DEG = 8; // ±8° para iluminar en verde
-        const TILT_THRESHOLD_DEG = 45;     // <45° Móvil Plano | >=45° Móvil Levantado (Cámara AR)
+        // Coordenadas oficiales de las Casas Colgadas de Cuenca
+        const CUENCA_LAT = 40.0783;
+        const CUENCA_LON = -2.1287;
+        const ALIGNMENT_THRESHOLD_DEG = 8.0; // ±8° para iluminar verde
+        const TILT_THRESHOLD_DEG = 45;       // <45° móvil plano | >=45° levantado (cámara)
 
-        // 2. ESTADO DE LA APLICACIÓN
-        const state = {
-            // Ubicación por defecto (Madrid Puerta del Sol) hasta que el GPS real responda
-            userLat: 40.4168,
-            userLon: -3.7038,
-            hasRealGps: false,
-
-            // Lecturas de sensores reales
-            realHeading: 0,
-            realTilt: 75, // Ángulo respecto a la mesa/palma (0 = plano, 90 = vertical frente a los ojos)
-
-            // Lecturas del modo simulación
-            simActive: false,
-            simHeading: 105,
-            simTilt: 75,
-
-            // Valores calculados en tiempo real
-            currentHeading: 0,
-            currentTilt: 75,
-            cuencaBearing: 106,
-            cuencaDistanceKm: 138,
-            angleDiff: 0,
+        const appState = {
+            userLat: null,
+            userLon: null,
+            heading: 0,         // Rumbo actual de la brújula (0..360°, Norte = 0°)
+            bearingToCuenca: 0, // Rumbo directo a Cuenca desde la posición actual
+            distanceKm: 0,
+            tilt: 0,            // Elevación del móvil (0 = plano sobre la mano, 90 = vertical frente a ojos)
+            relativeAngle: 0,   // Diferencia (-180..+180) entre heading y Cuenca
             isAligned: false,
-            isUprightMode: true, // false = Modo Brújula Plano, true = Modo Cámara AR
+            isUpright: false,
             useCasasSvg: false
         };
 
-        // 3. REFERENCIAS AL DOM
         const dom = {
-            splash: document.getElementById('splash-screen'),
-            btnStartSensors: document.getElementById('btn-start-sensors'),
-            btnStartDemo: document.getElementById('btn-start-demo'),
-            permMsg: document.getElementById('permission-msg'),
+            splash: document.getElementById('splash-modal'),
+            btnActivate: document.getElementById('btn-activate'),
+            statusDebug: document.getElementById('status-debug-text'),
             video: document.getElementById('camera-stream'),
-            arFallbackBg: document.getElementById('ar-fallback-bg'),
-            topBar: document.getElementById('top-utility-bar'),
-
-            // Vistas de los 2 modos
-            flatView: document.getElementById('flat-compass-view'),
-            arView: document.getElementById('upright-ar-view'),
-
-            // Elementos Modo 1 (Móvil Plano)
-            flatDistance: document.getElementById('flat-distance'),
-            flatGlowRing: document.getElementById('flat-glow-ring'),
-            flatTopTriangle: document.getElementById('flat-top-triangle'),
-            flatNorthDial: document.getElementById('flat-north-dial'),
-            flatCuencaNeedle: document.getElementById('flat-cuenca-needle'),
-            flatNeedleLine: document.getElementById('flat-needle-line'),
-            flatNeedleHead: document.getElementById('flat-needle-head'),
-            flatDeltaDeg: document.getElementById('flat-delta-deg'),
-            flatStatusLabel: document.getElementById('flat-status-label'),
-            flatUserHeading: document.getElementById('flat-user-heading'),
-            flatTargetBearing: document.getElementById('flat-target-bearing'),
-            flatTiltReadout: document.getElementById('flat-tilt-readout'),
-
-            // Elementos Modo 2 (Móvil Vertical Cámara AR)
-            arTapeTrack: document.getElementById('ar-tape-track'),
-            arDirectionHint: document.getElementById('ar-direction-hint'),
-            arDistancePill: document.getElementById('ar-distance-pill'),
+            flatLayer: document.getElementById('flat-compass-layer'),
+            arLayer: document.getElementById('ar-overlay-layer'),
+            btnToggleShape: document.getElementById('btn-toggle-shape'),
+            toggleLabel: document.getElementById('toggle-label'),
             reticleCircle: document.getElementById('reticle-circle'),
-            reticleCasasSvg: document.getElementById('reticle-casas-svg'),
-            arCenterBadge: document.getElementById('ar-center-badge'),
-            arLiveAngles: document.getElementById('ar-Live-Angles'),
-
-            // Controles de SVG y Simulador
-            btnToggleSvg: document.getElementById('btn-toggle-svg'),
-            svgToggleText: document.getElementById('svg-toggle-text'),
-            btnToggleSim: document.getElementById('btn-toggle-sim'),
-            simDrawer: document.getElementById('sim-drawer'),
-            btnCloseSim: document.getElementById('btn-close-sim'),
-            chkSimActive: document.getElementById('chk-sim-active'),
-            sliderTilt: document.getElementById('slider-tilt'),
-            sliderHeading: document.getElementById('slider-heading'),
-            simTiltVal: document.getElementById('sim-tilt-val'),
-            simHeadingVal: document.getElementById('sim-heading-val'),
-            btnSnapCuenca: document.getElementById('btn-snap-cuenca'),
-            selectSimCity: document.getElementById('select-sim-city')
+            reticleCasas: document.getElementById('reticle-casas'),
+            centerBadge: document.getElementById('center-badge'),
+            arHudTrack: document.getElementById('ar-hud-track'),
+            arHintText: document.getElementById('ar-hint-text'),
+            arKmPill: document.getElementById('ar-km-pill'),
+            arAngleDiffReadout: document.getElementById('ar-angle-diff-readout'),
+            flatCompassCard: document.getElementById('flat-compass-card'),
+            flatNeedleContainer: document.getElementById('flat-needle-container'),
+            flatNeedlePoly: document.getElementById('flat-needle-poly'),
+            flatNeedleLine: document.getElementById('flat-needle-line'),
+            flatPointerTip: document.getElementById('flat-pointer-tip'),
+            flatOuterCircle: document.getElementById('flat-outer-circle'),
+            flatRelativeAngle: document.getElementById('flat-relative-angle'),
+            flatTurnLabel: document.getElementById('flat-turn-label'),
+            flatKmLabel: document.getElementById('flat-km-label'),
+            dataHeading: document.getElementById('data-heading'),
+            dataBearing: document.getElementById('data-bearing'),
+            dataTilt: document.getElementById('data-tilt')
         };
 
         // ==========================================================================
-        // FUNCIONES MATEMÁTICAS Y GEODÉSICAS (Rumbo y Distancia a Cuenca)
+        // CÁLCULO GEODÉSICO EXACTO DE RUMBO (GREAT-CIRCLE BEARING) Y DISTANCIA
         // ==========================================================================
-        const toRad = (deg) => (deg * Math.PI) / 180;
-        const toDeg = (rad) => (rad * 180) / Math.PI;
+        const toRad = deg => (deg * Math.PI) / 180.0;
+        const toDeg = rad => (rad * 180.0) / Math.PI;
 
-        /**
-         * Calcula el Azimut/Rumbo inicial (0-360°) desde el usuario hasta Cuenca
-         */
-        function calculateBearing(lat1, lon1, lat2, lon2) {
+        function calculateInitialBearing(lat1, lon1, lat2, lon2) {
             const φ1 = toRad(lat1);
             const φ2 = toRad(lat2);
             const Δλ = toRad(lon2 - lon1);
@@ -505,14 +370,11 @@
             const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
             const θ = Math.atan2(y, x);
 
-            return (toDeg(θ) + 360) % 360;
+            return (toDeg(θ) + 360.0) % 360.0;
         }
 
-        /**
-         * Calcula la distancia en kilómetros mediante la fórmula de Haversine
-         */
         function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radio de la Tierra en km
+            const R = 6371.0;
             const dLat = toRad(lat2 - lat1);
             const dLon = toRad(lon2 - lon1);
             const a =
@@ -523,56 +385,36 @@
             return Math.round(R * c);
         }
 
-        /**
-         * Devuelve la diferencia angular más corta entre el rumbo del móvil y Cuenca (-180° a +180°)
-         * Negativo = Cuenca queda a la izquierda | Positivo = Cuenca queda a la derecha
-         */
-        function getShortestAngleDiff(currentHeading, targetBearing) {
-            return ((targetBearing - currentHeading + 540) % 360) - 180;
-        }
-
-        /**
-         * Recalcula los datos geográficos de Cuenca según las coordenadas actuales
-         */
-        function updateGeodesicTarget() {
-            state.cuencaBearing = calculateBearing(
-                state.userLat,
-                state.userLon,
-                CUENCA_COORDS.lat,
-                CUENCA_COORDS.lon
+        function updateGeoTarget() {
+            if (appState.userLat === null || appState.userLon === null) return;
+            appState.bearingToCuenca = calculateInitialBearing(
+                appState.userLat,
+                appState.userLon,
+                CUENCA_LAT,
+                CUENCA_LON
             );
-            state.cuencaDistanceKm = calculateDistanceKm(
-                state.userLat,
-                state.userLon,
-                CUENCA_COORDS.lat,
-                CUENCA_COORDS.lon
+            appState.distanceKm = calculateDistanceKm(
+                appState.userLat,
+                appState.userLon,
+                CUENCA_LAT,
+                CUENCA_LON
             );
         }
 
         // ==========================================================================
-        // DETECCIÓN DE POSTURA (PLANO EN LA MANO VS LEVANTADO EN RETRATO O APAISADO)
+        // LECTURA DE SENSORES Y BRÚJULA ABSOLUTA (ANDROID / IOS COMPATIBLE)
         // ==========================================================================
-        /**
-         * Calcula el ángulo real de elevación del móvil respecto al plano horizontal (0° a 90°)
-         * usando la normal del dispositivo a partir de beta y gamma.
-         * Esto funciona igual de bien tanto si el usuario sujeta el móvil en vertical (retrato)
-         * como si lo gira en horizontal (apaisado/landscape).
-         */
-        function computeDeviceTiltFromHorizontal(beta, gamma) {
-            if (beta === null || gamma === null) return 75;
+        function getDeviceTilt(beta, gamma) {
+            if (beta === null || gamma === null) return 0;
             const bRad = toRad(beta);
             const gRad = toRad(gamma);
-            // Componente Z del vector gravedad respecto a la pantalla del móvil
-            const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
-            const clamped = Math.min(1, Math.max(0, cosTilt));
-            return Math.round(toDeg(Math.acos(clamped))); // 0° = tumbado plano, 90° = totalmente levantado
+            // Proyección ortogonal respecto al plano horizontal
+            const cosVal = Math.abs(Math.cos(bRad) * Math.cos(gRad));
+            const clamped = Math.min(1.0, Math.max(0.0, cosVal));
+            return Math.round(toDeg(Math.acos(clamped)));
         }
 
-        /**
-         * Obtiene el ángulo de rotación de la pantalla (0, 90, -90, 180) para compensar la brújula
-         * si el usuario pone el móvil en apaisado.
-         */
-        function getScreenOrientationAngle() {
+        function getScreenRotation() {
             if (window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number') {
                 return window.screen.orientation.angle;
             }
@@ -582,350 +424,250 @@
             return 0;
         }
 
-        // ==========================================================================
-        // LECTURA DE SENSORES HARDWARE (iOS & Android)
-        // ==========================================================================
-        function handleOrientationEvent(event) {
-            // 1. Calcular inclinación (Plano vs Levantado frente a los ojos)
+        function processOrientation(event) {
+            // Inclinación respecto a la mesa
             if (event.beta !== null && event.gamma !== null) {
-                state.realTilt = computeDeviceTiltFromHorizontal(event.beta, event.gamma);
+                appState.tilt = getDeviceTilt(event.beta, event.gamma);
             }
 
-            // 2. Calcular rumbo magnético (Azimut 0-360°)
-            let heading = null;
+            let trueHeading = null;
 
+            // 1. iOS: webkitCompassHeading ya apunta al Norte Magnético (0..360° horario)
             if (typeof event.webkitCompassHeading === 'number') {
-                // Dispositivos iOS (iPhone/iPad) entregan el rumbo magnético directo
-                heading = event.webkitCompassHeading;
-            } else if (event.alpha !== null) {
-                // Dispositivos Android (alpha gira en sentido antihorario)
-                heading = (360 - event.alpha) % 360;
+                trueHeading = event.webkitCompassHeading;
+            } 
+            // 2. Android: deviceorientationabsolute (alpha = 0 es Norte, pero gira antihorario)
+            else if (event.alpha !== null) {
+                trueHeading = (360.0 - event.alpha) % 360.0;
             }
 
-            if (heading !== null) {
-                // Compensar si el móvil está girado en modo apaisado (landscape)
-                const screenAngle = getScreenOrientationAngle();
-                state.realHeading = (heading + screenAngle + 360) % 360;
+            if (trueHeading !== null) {
+                const screenOffset = getScreenRotation();
+                appState.heading = (trueHeading + screenOffset + 360.0) % 360.0;
             }
         }
 
-        async function startHardwareExperience() {
-            dom.permMsg.classList.add('hidden');
-            let cameraStarted = false;
+        async function initHardware() {
+            dom.statusDebug.textContent = 'Solicitando acceso a cámara y GPS...';
 
-            // A) Petición de permiso explícita para Giroscopio/Brújula en iOS 13+
-            try {
-                if (typeof DeviceOrientationEvent !== 'undefined' &&
-                    typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    const permissionState = await DeviceOrientationEvent.requestPermission();
-                    if (permissionState === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientationEvent, true);
-                    } else {
-                        showNonBlockingMessage('Permiso de brújula denegado en iOS. Se activará el panel simulador.');
-                        enableSimulationMode(true);
+            // 1. Permiso de Brújula para iOS 13+
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission === 'granted') {
+                        window.addEventListener('deviceorientation', processOrientation, true);
                     }
-                } else {
-                    // Android y navegadores estándar: escuchar deviceorientationabsolute si existe
-                    if ('ondeviceorientationabsolute' in window) {
-                        window.addEventListener('deviceorientationabsolute', handleOrientationEvent, true);
-                    } else {
-                        window.addEventListener('deviceorientation', handleOrientationEvent, true);
-                    }
+                } catch (e) {
+                    console.error('Permiso iOS orientación denegado:', e);
                 }
-            } catch (err) {
-                console.warn('Error al iniciar brújula:', err);
-                enableSimulationMode(true);
+            } else {
+                // Android Chrome / Firefox: escuchar deviceorientationabsolute para rumbo magnético real
+                if ('ondeviceorientationabsolute' in window) {
+                    window.addEventListener('deviceorientationabsolute', processOrientation, true);
+                } else {
+                    window.addEventListener('deviceorientation', processOrientation, true);
+                }
             }
 
-            // B) Iniciar GPS en tiempo real
+            // 2. Geolocalización GPS precisa
             if ('geolocation' in navigator) {
                 navigator.geolocation.watchPosition(
                     (pos) => {
-                        state.userLat = pos.coords.latitude;
-                        state.userLon = pos.coords.longitude;
-                        state.hasRealGps = true;
-                        updateGeodesicTarget();
+                        appState.userLat = pos.coords.latitude;
+                        appState.userLon = pos.coords.longitude;
+                        updateGeoTarget();
+                        dom.statusDebug.textContent = `GPS fijado: ${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
                     },
                     (err) => {
-                        console.warn('Usando coordenadas por defecto (Madrid):', err.message);
-                        updateGeodesicTarget();
+                        console.warn('GPS sin fijar, usando Madrid por defecto:', err.message);
+                        appState.userLat = 40.4168;
+                        appState.userLon = -3.7038;
+                        updateGeoTarget();
                     },
-                    { enableHighAccuracy: true, maximumAge: 5000 }
+                    { enableHighAccuracy: true, maximumAge: 3000 }
                 );
+            } else {
+                appState.userLat = 40.4168;
+                appState.userLon = -3.7038;
+                updateGeoTarget();
             }
 
-            // C) Iniciar Cámara Trasera (facingMode: environment)
+            // 3. Cámara trasera nítida (100% de la pantalla)
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             facingMode: { ideal: 'environment' },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
                         },
                         audio: false
                     });
                     dom.video.srcObject = stream;
                     await dom.video.play();
-                    cameraStarted = true;
                 } catch (camErr) {
-                    console.warn('No se pudo abrir la cámara trasera, usando fondo AR táctico:', camErr);
+                    console.warn('Cámara trasera no disponible:', camErr);
                 }
             }
 
-            // Mostrar fondo táctico si estamos en un PC sin cámara
-            if (!cameraStarted) {
-                dom.arFallbackBg.classList.remove('opacity-0');
-            }
-
-            // Ocultar pantalla de bienvenida y mostrar el HUD
+            // Cerrar modal inicial
             dom.splash.classList.add('hidden');
-            dom.topBar.classList.remove('hidden');
-            updateGeodesicTarget();
-        }
-
-        function showNonBlockingMessage(text) {
-            dom.permMsg.textContent = text;
-            dom.permMsg.classList.remove('hidden');
         }
 
         // ==========================================================================
-        // RENDERIZADO DE LA BARRITA SUPERIOR DE BRÚJULA (HUD COMPASS TAPE)
+        // RENDERIZADO DEL HUD SUPERIOR EN MODO CÁMARA
         // ==========================================================================
-        function renderCompassTape(heading, targetBearing, isAligned) {
-            // Cada grado equivale a 4 píxeles de desplazamiento horizontal en la barrita
-            const pxPerDeg = 4;
-            let html = '';
+        function renderArHud(heading, bearing, isAligned) {
+            const pxPerDegree = 4.2;
+            let markersHtml = '';
 
-            // Dibujar marcas cada 15 grados alrededor del rumbo actual (-60° a +60°)
-            const baseStep = Math.floor(heading / 15) * 15;
+            // Dibujar marcas graduadas cada 15°
+            const baseDegree = Math.floor(heading / 15) * 15;
             for (let offset = -75; offset <= 75; offset += 15) {
-                const deg = (baseStep + offset + 360) % 360;
-                const diff = getShortestAngleDiff(heading, deg);
-                const xOffsetPx = diff * pxPerDeg;
+                const targetDeg = (baseDegree + offset + 360) % 360;
+                let diff = ((targetDeg - heading + 540) % 360) - 180;
+                const posX = diff * pxPerDegree;
 
-                // Etiquetas para puntos cardinales o grados
-                let label = `${deg}°`;
+                let tag = `${targetDeg}°`;
                 let isCardinal = false;
-                if (deg === 0) { label = 'N'; isCardinal = true; }
-                else if (deg === 90) { label = 'E'; isCardinal = true; }
-                else if (deg === 180) { label = 'S'; isCardinal = true; }
-                else if (deg === 270) { label = 'O'; isCardinal = true; }
+                if (targetDeg === 0) { tag = 'N'; isCardinal = true; }
+                else if (targetDeg === 90) { tag = 'E'; isCardinal = true; }
+                else if (targetDeg === 180) { tag = 'S'; isCardinal = true; }
+                else if (targetDeg === 270) { tag = 'O'; isCardinal = true; }
 
-                html += `
-                    <div class="absolute top-0 bottom-0 flex flex-col items-center justify-end pb-1.5"
-                         style="left: calc(50% + ${xOffsetPx}px); transform: translateX(-50%);">
-                        <span class="text-[10px] font-mono-hud ${isCardinal ? 'text-amber-400 font-extrabold text-xs' : 'text-slate-400'}">
-                            ${label}
+                markersHtml += `
+                    <div class="absolute top-0 bottom-0 flex flex-col items-center justify-end pb-1"
+                         style="left: calc(50% + ${posX}px); transform: translateX(-50%);">
+                        <span class="text-[9px] font-mono-hud ${isCardinal ? 'text-amber-400 font-extrabold' : 'text-white/60'}">
+                            ${tag}
                         </span>
-                        <div class="w-px ${isCardinal ? 'h-3 bg-amber-400' : 'h-2 bg-slate-600'} mt-0.5"></div>
+                        <div class="w-px ${isCardinal ? 'h-3 bg-amber-400' : 'h-1.5 bg-white/40'} mt-0.5"></div>
                     </div>
                 `;
             }
 
-            // Dibujar el marcador especial de CUENCA dentro de la barrita superior
-            const cuencaDiff = getShortestAngleDiff(heading, targetBearing);
-            const clampedDiff = Math.max(-58, Math.min(58, cuencaDiff));
-            const cuencaX = clampedDiff * pxPerDeg;
-            const badgeColor = isAligned ? 'bg-emerald-500 text-slate-950 border-emerald-300' : 'bg-rose-600 text-white border-rose-400';
+            // Baliza de Cuenca en la barrita
+            let cuencaDiff = ((bearing - heading + 540) % 360) - 180;
+            const clampedDiff = Math.max(-60, Math.min(60, cuencaDiff));
+            const cuencaX = clampedDiff * pxPerDegree;
+            const badgeBg = isAligned ? 'bg-[#00ff66] text-black font-extrabold' : 'bg-[#ff2244] text-white font-bold';
 
-            html += `
-                <div class="absolute top-1.5 flex flex-col items-center z-30 transition-colors"
+            markersHtml += `
+                <div class="absolute top-1.5 flex flex-col items-center z-30"
                      style="left: calc(50% + ${cuencaX}px); transform: translateX(-50%);">
-                    <span class="px-2 py-0.5 rounded-full text-[9px] font-mono-hud font-extrabold uppercase tracking-wider border shadow ${badgeColor}">
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-mono-hud uppercase tracking-wider border border-white/20 shadow-md ${badgeBg}">
                         CUENCA
                     </span>
                 </div>
             `;
 
-            dom.arTapeTrack.innerHTML = html;
+            dom.arHudTrack.innerHTML = markersHtml;
         }
 
         // ==========================================================================
-        // BUCLE PRINCIPAL DE ACTUALIZACIÓN VISUAL (60 FPS)
+        // BUCLE PRINCIPAL DE ANIMACIÓN Y SINCRONIZACIÓN (60 FPS)
         // ==========================================================================
-        function updateUI() {
-            // 1. Determinar fuente de datos (Sensores reales vs Simulación)
-            state.currentHeading = state.simActive ? state.simHeading : state.realHeading;
-            state.currentTilt = state.simActive ? state.simTilt : state.realTilt;
+        function tick() {
+            // Calcular diferencia angular más corta hacia Cuenca (-180 a +180)
+            const shortestDiff = ((appState.bearingToCuenca - appState.heading + 540) % 360) - 180;
+            appState.relativeAngle = shortestDiff;
+            appState.isAligned = Math.abs(shortestDiff) <= ALIGNMENT_THRESHOLD_DEG;
 
-            // 2. Calcular diferencia angular hacia Cuenca (-180° a +180°)
-            state.angleDiff = getShortestAngleDiff(state.currentHeading, state.cuencaBearing);
-            const absDiff = Math.abs(state.angleDiff);
-            state.isAligned = absDiff <= ALIGNMENT_TOLERANCE_DEG;
+            // Determinar postura: Plano (<45°) vs Vertical (>=45°)
+            appState.isUpright = appState.tilt >= TILT_THRESHOLD_DEG;
 
-            // 3. Determinar postura: Móvil Plano (<45°) vs Levantado frente a los ojos (>=45°)
-            state.isUprightMode = state.currentTilt >= TILT_THRESHOLD_DEG;
-
-            // 4. Alternar entre Modo Brújula Plano y Modo Cámara AR Vertical
-            if (state.isUprightMode) {
-                // MODO 2: LEVANTADO (CÁMARA AR)
-                dom.flatView.classList.add('opacity-0', 'pointer-events-none');
-                dom.arView.classList.remove('opacity-0');
-                if (dom.video.srcObject) {
-                    dom.video.classList.remove('opacity-0');
-                } else {
-                    dom.arFallbackBg.classList.remove('opacity-0');
-                }
+            // 1. Alternar capas según postura
+            if (appState.isUpright) {
+                // Modo Cámara AR: Ocultar brújula opaca, mostrar interfaz transparente
+                dom.flatLayer.classList.add('hidden');
+                dom.arLayer.classList.remove('hidden');
             } else {
-                // MODO 1: PLANO EN LA MANO (BRÚJULA CLÁSICA)
-                dom.flatView.classList.remove('opacity-0', 'pointer-events-none');
-                dom.arView.classList.add('opacity-0');
-                dom.video.classList.add('opacity-0');
+                // Modo Brújula: Mostrar brújula opaca, ocultar visor de cámara
+                dom.flatLayer.classList.remove('hidden');
+                dom.arLayer.classList.add('hidden');
             }
 
-            // 5. Aplicar clase global `.is-aligned` al body para cambiar la circunferencia/SVG de ROJO a VERDE
-            if (state.isAligned) {
+            // 2. Modificar clase global para cambiar colores a verde (#00ff66) o rojo (#ff2244)
+            if (appState.isAligned) {
                 document.body.classList.add('is-aligned');
             } else {
                 document.body.classList.remove('is-aligned');
             }
 
-            // 6. Actualizar interfaz del MODO 1 (Móvil Plano - Brújula)
-            const roundedHeading = Math.round(state.currentHeading);
-            const roundedBearing = Math.round(state.cuencaBearing);
-            const roundedDiff = Math.round(state.angleDiff);
+            // 3. Actualizar Modo Brújula (Móvil Plano)
+            dom.flatCompassCard.style.transform = `rotate(${-appState.heading}deg)`;
+            dom.flatNeedleContainer.style.transform = `rotate(${appState.relativeAngle}deg)`;
 
-            dom.flatDistance.textContent = `${state.cuencaDistanceKm} km`;
-            dom.flatUserHeading.textContent = `${String(roundedHeading).padStart(3, '0')}°`;
-            dom.flatTargetBearing.textContent = `${String(roundedBearing).padStart(3, '0')}°`;
-            dom.flatTiltReadout.textContent = `${state.currentTilt}°`;
+            const roundedDiff = Math.round(appState.relativeAngle);
+            dom.flatRelativeAngle.textContent = `${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
+            dom.flatKmLabel.textContent = `${appState.distanceKm} km`;
+            dom.dataHeading.textContent = `${String(Math.round(appState.heading)).padStart(3, '0')}°`;
+            dom.dataBearing.textContent = `${String(Math.round(appState.bearingToCuenca)).padStart(3, '0')}°`;
+            dom.dataTilt.textContent = `${appState.tilt}°`;
 
-            // Rotar el disco del Norte Magnético y la aguja principal de Cuenca
-            dom.flatNorthDial.style.transform = `rotate(${-state.currentHeading}deg)`;
-            dom.flatCuencaNeedle.style.transform = `rotate(${state.angleDiff}deg)`;
-
-            dom.flatDeltaDeg.textContent = `${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
-
-            if (state.isAligned) {
-                dom.flatStatusLabel.textContent = '¡EN CUENCA!';
-                dom.flatStatusLabel.className = 'text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 text-center px-1';
-                dom.flatGlowRing.className = 'w-72 h-72 sm:w-80 sm:h-80 rounded-full border-2 border-emerald-400 flex items-center justify-center transition-colors duration-300 relative shadow-[0_0_40px_rgba(52,199,89,0.35)]';
-                dom.flatTopTriangle.className = 'w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-emerald-400 transition-colors';
-                dom.flatNeedleLine.setAttribute('stroke', '#34c759');
-                dom.flatNeedleHead.setAttribute('fill', '#34c759');
+            if (appState.isAligned) {
+                dom.flatTurnLabel.textContent = '¡EN CUENCA!';
+                dom.flatTurnLabel.className = 'text-[9px] font-mono-hud uppercase text-emerald-400 font-extrabold';
+                dom.flatPointerTip.className = 'w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-emerald-400 transition-colors';
+                dom.flatOuterCircle.className = 'absolute inset-0 rounded-full border-2 border-emerald-400 shadow-[0_0_30px_rgba(0,255,102,0.4)] transition-colors duration-200';
+                dom.flatNeedlePoly.setAttribute('fill', '#00ff66');
+                dom.flatNeedleLine.setAttribute('stroke', '#00ff66');
             } else {
-                dom.flatStatusLabel.textContent = state.angleDiff > 0 ? 'Gira Derecha ▶' : '◀ Gira Izqda';
-                dom.flatStatusLabel.className = 'text-[10px] font-semibold uppercase tracking-wider text-rose-400 text-center px-1';
-                dom.flatGlowRing.className = 'w-72 h-72 sm:w-80 sm:h-80 rounded-full border-2 border-rose-500/40 flex items-center justify-center transition-colors duration-300 relative shadow-2xl';
-                dom.flatTopTriangle.className = 'w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-rose-500 transition-colors';
-                dom.flatNeedleLine.setAttribute('stroke', '#ff3b30');
-                dom.flatNeedleHead.setAttribute('fill', '#ff3b30');
+                dom.flatTurnLabel.textContent = roundedDiff > 0 ? 'DERECHA ▶' : '◀ IZQUIERDA';
+                dom.flatTurnLabel.className = 'text-[9px] font-mono-hud uppercase text-rose-400 font-semibold';
+                dom.flatPointerTip.className = 'w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[10px] border-t-rose-500 transition-colors';
+                dom.flatOuterCircle.className = 'absolute inset-0 rounded-full border-2 border-slate-800 transition-colors duration-200';
+                dom.flatNeedlePoly.setAttribute('fill', '#ff2244');
+                dom.flatNeedleLine.setAttribute('stroke', '#ff2244');
             }
 
-            // 7. Actualizar interfaz del MODO 2 (Móvil Levantado - Cámara AR)
-            renderCompassTape(state.currentHeading, state.cuencaBearing, state.isAligned);
-            dom.arDistancePill.textContent = `${state.cuencaDistanceKm} km`;
-            dom.arLiveAngles.textContent = `Desviación: ${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
+            // 4. Actualizar Modo Cámara AR
+            renderArHud(appState.heading, appState.bearingToCuenca, appState.isAligned);
+            dom.arKmPill.textContent = `${appState.distanceKm} km`;
+            dom.arAngleDiffReadout.textContent = `Desviación: ${roundedDiff > 0 ? '+' : ''}${roundedDiff}°`;
 
-            if (state.isAligned) {
-                dom.arDirectionHint.textContent = '● ¡MIRANDO A CUENCA!';
-                dom.arDirectionHint.className = 'text-emerald-400 font-extrabold';
-                dom.arCenterBadge.textContent = '¡MIRANDO A CUENCA!';
-                dom.arCenterBadge.className = 'mt-4 px-5 py-1.5 rounded-full bg-emerald-500 text-slate-950 font-mono-hud text-xs font-extrabold uppercase tracking-widest shadow-[0_0_25px_rgba(52,199,89,0.8)] transition-all';
+            if (appState.isAligned) {
+                dom.arHintText.textContent = '● ¡MIRANDO A CUENCA!';
+                dom.arHintText.className = 'text-emerald-400 font-extrabold';
+                dom.centerBadge.textContent = '¡MIRANDO A CUENCA!';
             } else {
-                const sideText = state.angleDiff > 0
-                    ? `Cuenca a ${Math.abs(roundedDiff)}° ▶`
-                    : `◀ Cuenca a ${Math.abs(roundedDiff)}°`;
-                dom.arDirectionHint.textContent = sideText;
-                dom.arDirectionHint.className = 'text-rose-400 font-bold';
-                dom.arCenterBadge.textContent = `Desviación: ${Math.abs(roundedDiff)}°`;
-                dom.arCenterBadge.className = 'mt-4 px-4 py-1.5 rounded-full bg-slate-950/85 border border-rose-500/50 text-rose-400 font-mono-hud text-xs font-bold uppercase tracking-widest shadow-lg transition-all';
+                const hintDirection = roundedDiff > 0 ? `Cuenca a la derecha (${Math.abs(roundedDiff)}°) ▶` : `◀ Cuenca a la izquierda (${Math.abs(roundedDiff)}°)`;
+                dom.arHintText.textContent = hintDirection;
+                dom.arHintText.className = 'text-rose-400 font-bold';
+                dom.centerBadge.textContent = `Desviación: ${Math.abs(roundedDiff)}°`;
+                dom.centerBadge.style.backgroundColor = '';
+                dom.centerBadge.style.color = '';
+                dom.centerBadge.style.borderColor = '';
+                dom.centerBadge.style.boxShadow = '';
             }
 
-            requestAnimationFrame(updateUI);
+            requestAnimationFrame(tick);
         }
 
         // ==========================================================================
-        // EVENTOS DE BOTONES Y SIMULADOR INTERACTIVO
+        // EVENTOS DE BOTONES
         // ==========================================================================
-        function enableSimulationMode(openDrawer = true) {
-            state.simActive = true;
-            dom.chkSimActive.checked = true;
-            if (openDrawer) {
-                dom.simDrawer.classList.remove('hidden');
-            }
-        }
-
-        // Botón principal: Activar Sensores y Cámara
-        dom.btnStartSensors.addEventListener('click', () => {
-            startHardwareExperience();
+        dom.btnActivate.addEventListener('click', () => {
+            initHardware();
         });
 
-        // Botón secundario: Entrar directo en Modo Simulación (ideal para probar en PC)
-        dom.btnStartDemo.addEventListener('click', () => {
-            dom.splash.classList.add('hidden');
-            dom.topBar.classList.remove('hidden');
-            dom.arFallbackBg.classList.remove('opacity-0');
-            updateGeodesicTarget();
-            enableSimulationMode(true);
-        });
-
-        // Alternar entre Circunferencia y el SVG de las Casas Colgadas
-        dom.btnToggleSvg.addEventListener('click', () => {
-            state.useCasasSvg = !state.useCasasSvg;
-            if (state.useCasasSvg) {
+        // Alternar forma central entre la circunferencia y el SVG de Casas Colgadas
+        dom.btnToggleShape.addEventListener('click', () => {
+            appState.useCasasSvg = !appState.useCasasSvg;
+            if (appState.useCasasSvg) {
                 dom.reticleCircle.classList.add('hidden');
-                dom.reticleCasasSvg.classList.remove('hidden');
-                dom.svgToggleText.textContent = 'Ver Círculo Clásico';
+                dom.reticleCasas.classList.remove('hidden');
+                dom.toggleLabel.textContent = 'Ver Círculo';
             } else {
-                dom.reticleCasasSvg.classList.add('hidden');
+                dom.reticleCasas.classList.add('hidden');
                 dom.reticleCircle.classList.remove('hidden');
-                dom.svgToggleText.textContent = 'Ver SVG Casas Colgadas';
+                dom.toggleLabel.textContent = 'Ver Casas Colgadas';
             }
         });
 
-        // Abrir / cerrar cajón de simulación
-        dom.btnToggleSim.addEventListener('click', () => {
-            dom.simDrawer.classList.toggle('hidden');
-        });
-        dom.btnCloseSim.addEventListener('click', () => {
-            dom.simDrawer.classList.add('hidden');
-        });
-
-        // Checkbox activar/desactivar simulación
-        dom.chkSimActive.addEventListener('change', (e) => {
-            state.simActive = e.target.checked;
-        });
-
-        // Slider de inclinación (Plano 0° vs Levantado 90°)
-        dom.sliderTilt.addEventListener('input', (e) => {
-            state.simActive = true;
-            dom.chkSimActive.checked = true;
-            state.simTilt = Number(e.target.value);
-            const modeLabel = state.simTilt >= TILT_THRESHOLD_DEG ? 'Vertical AR' : 'Móvil Plano';
-            dom.simTiltVal.textContent = `${state.simTilt}° (${modeLabel})`;
-        });
-
-        // Slider de rumbo de brújula (0° - 359°)
-        dom.sliderHeading.addEventListener('input', (e) => {
-            state.simActive = true;
-            dom.chkSimActive.checked = true;
-            state.simHeading = Number(e.target.value);
-            dom.simHeadingVal.textContent = `${state.simHeading}°`;
-        });
-
-        // Botón rápido para clavar el puntero mirando exactamente a Cuenca
-        dom.btnSnapCuenca.addEventListener('click', () => {
-            state.simActive = true;
-            dom.chkSimActive.checked = true;
-            state.simHeading = Math.round(state.cuencaBearing);
-            dom.sliderHeading.value = state.simHeading;
-            dom.simHeadingVal.textContent = `${state.simHeading}°`;
-        });
-
-        // Selector de ciudad de prueba
-        dom.selectSimCity.addEventListener('change', (e) => {
-            const [lat, lon] = e.target.value.split(',').map(Number);
-            state.userLat = lat;
-            state.userLon = lon;
-            updateGeodesicTarget();
-        });
-
-        // Iniciar cálculos y bucle de renderizado al cargar la ventana
         window.onload = function () {
-            updateGeodesicTarget();
-            requestAnimationFrame(updateUI);
+            requestAnimationFrame(tick);
         };
     </script>
 </body>
