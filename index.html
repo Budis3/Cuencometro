@@ -11,8 +11,8 @@
   <!-- Elemento de Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal de Permisos / Inicio -->
-  <div id="permission-modal">
+  <!-- Modal 1: Bienvenida y Permisos Iniciales -->
+  <div id="permission-modal" class="modal-overlay">
     <div class="modal-card">
       <div class="icon-cuenca">📍</div>
       <h1>Mirando a Cuenca</h1>
@@ -23,6 +23,19 @@
     </div>
   </div>
 
+  <!-- Modal 2: Calibración y Aviso de Interferencias Ferromagnéticas -->
+  <div id="calibration-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="icon-cuenca">♾️</div>
+      <h1>Calibra tu Brújula</h1>
+      <p>Para obtener la máxima precisión, asegúrate de estar <strong>alejado de objetos metálicos o materiales ferromagnéticos</strong> y mueve el teléfono dibujando un «8» en el aire.</p>
+      <button class="btn-primary" id="calibration-ok-btn">
+        <span>Entendido, ¡vamos!</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenedor General de la Aplicación -->
   <div id="app-container">
     
     <!-- Barra Superior -->
@@ -32,16 +45,26 @@
         <span id="target-status-label">Buscando...</span>
       </div>
 
-      <button class="btn-icon" id="toggle-reticle-btn">
-        <span id="reticle-mode-label">⭕ Círculo</span>
+      <!-- Selector de mira (visible exclusivamente en Modo AR) -->
+      <button class="btn-icon" id="toggle-reticle-btn" style="display: none;">
+        <span id="reticle-mode-label">⭕ Mira Cruz</span>
       </button>
     </div>
 
     <!-- 1. MODO BRÚJULA (PLANO EN LA MANO) -->
     <div id="compass-mode">
+      
+      <!-- Mensaje contextual situado encima del triángulo inmóvil -->
+      <div class="target-status-banner" id="banner-status-text">Buscando Cuenca</div>
+
+      <!-- Triángulo Isósceles inmóvil centrado en la vertical del teléfono -->
+      <div class="fixed-top-triangle" id="fixed-triangle"></div>
+
+      <!-- Esfera de la brújula -->
       <div class="compass-container">
         <div class="compass-bezel"></div>
 
+        <!-- Roseta Cardinal que apunta al Norte real -->
         <div class="compass-dial" id="compass-dial">
           <div class="dial-mark north">N</div>
           <div class="dial-mark east">E</div>
@@ -49,6 +72,7 @@
           <div class="dial-mark west">O</div>
         </div>
 
+        <!-- Aguja que apunta a Cuenca -->
         <div class="cuenca-needle" id="cuenca-needle">
           <div class="needle-shape">
             <div class="needle-cuenca-head" id="needle-head"></div>
@@ -66,29 +90,45 @@
 
     <!-- 2. MODO CÁMARA (VERTICAL AL FRENTE) -->
     <div id="ar-mode">
-      <div class="ar-compass-bar">
-        <span>📍 Cuenca: <strong id="ar-diff-angle">0°</strong></span>
+      
+      <!-- Cinta Superior: Brújula Horizontal de Realidad Aumentada -->
+      <div class="ar-compass-ribbon-container">
+        <!-- Marcador central inmóvil del visor -->
+        <div class="ar-center-indicator"></div>
+        
+        <!-- Marcador triangular dinámico que señala la posición de Cuenca en la cinta -->
+        <div class="ar-cuenca-target-pin" id="ar-cuenca-target-pin"></div>
+        
+        <!-- Pista graduada que se desliza horizontalmente -->
+        <div class="ar-compass-track" id="ar-compass-track"></div>
       </div>
 
+      <!-- Contenedor central del retículo (reducido un 30%) -->
       <div class="ar-reticle-container">
-        <!-- Retículo A: Círculo tradicional -->
-        <div class="target-circle" id="circle-reticle" style="display: none;"></div>
+        
+        <!-- Retículo A: Círculo con 4 líneas formando una cruz (mira telescópica) -->
+        <div class="target-cross-circle" id="circle-reticle" style="display: none;">
+          <div class="cross-line top"></div>
+          <div class="cross-line bottom"></div>
+          <div class="cross-line left"></div>
+          <div class="cross-line right"></div>
+        </div>
 
-        <!-- Retículo B: Casas Colgadas SVG oficial -->
+        <!-- Retículo B: SVG Casas Colgadas con máscara dinámica -->
         <div class="target-casas-container" id="casas-reticle"></div>
 
+        <!-- Letrero dinámico ampliado para que todo el texto sea visible sin cortes -->
         <div class="ar-status-text" id="ar-guidance-text">Gira hacia Cuenca</div>
       </div>
 
-      <div style="height: 30px;"></div>
+      <div style="height: 20px;"></div>
     </div>
 
-    <!-- Barra Inferior de Diagnóstico y Calibración Rápida -->
+    <!-- Barra Inferior de Diagnóstico (incluye grados de giro necesarios) -->
     <div class="bottom-info">
       <div>Rumbo Móvil: <span id="debug-heading">--°</span></div>
       <div>Rumbo Cuenca: <span id="debug-cuenca">--°</span></div>
-      <div>Desvío: <span id="debug-diff">--°</span></div>
-      <button class="btn-flip" id="btn-toggle-invert" title="Invierte 180° si tu sensor lee la dirección contraria">Invertir 180°</button>
+      <div>Giro requerido: <span id="debug-diff">--°</span></div>
     </div>
 
   </div>
@@ -106,19 +146,22 @@
     let currentHeading = 0;
     let isVertical = false;
     let reticleMode = 'casas';
-    let invertOffset = (localStorage.getItem('cuenca_invert_180') === 'true') ? 180 : 0;
 
-    const TOLERANCE_DEG = 9;
+    const TOLERANCE_DEG = 8; // Margen de coincidencia angular
 
     // Elementos DOM
-    const modal = document.getElementById('permission-modal');
+    const permissionModal = document.getElementById('permission-modal');
+    const calibrationModal = document.getElementById('calibration-modal');
     const startBtn = document.getElementById('start-btn');
+    const calibrationOkBtn = document.getElementById('calibration-ok-btn');
     const video = document.getElementById('camera-video');
     const compassMode = document.getElementById('compass-mode');
     const arMode = document.getElementById('ar-mode');
     const compassDial = document.getElementById('compass-dial');
     const cuencaNeedle = document.getElementById('cuenca-needle');
     const needleHead = document.getElementById('needle-head');
+    const fixedTriangle = document.getElementById('fixed-triangle');
+    const bannerStatusText = document.getElementById('banner-status-text');
     const distanceLabel = document.getElementById('distance-label');
     const targetDot = document.getElementById('target-dot');
     const targetStatusLabel = document.getElementById('target-status-label');
@@ -126,25 +169,36 @@
     const reticleModeLabel = document.getElementById('reticle-mode-label');
     const circleReticle = document.getElementById('circle-reticle');
     const casasReticle = document.getElementById('casas-reticle');
-    const arDiffAngle = document.getElementById('ar-diff-angle');
+    const arCompassTrack = document.getElementById('ar-compass-track');
+    const arCuencaTargetPin = document.getElementById('ar-cuenca-target-pin');
     const arGuidanceText = document.getElementById('ar-guidance-text');
     const debugHeading = document.getElementById('debug-heading');
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
-    const btnToggleInvert = document.getElementById('btn-toggle-invert');
 
-    if (invertOffset === 180) {
-      btnToggleInvert.style.background = 'rgba(59, 130, 246, 0.4)';
+    // Construcción de la cinta horizontal de la brújula en AR
+    function buildCompassTrack() {
+      const cardinalMap = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SO', 270: 'O', 315: 'NO' };
+      let html = '';
+      // Repetimos ciclo para facilitar el desplazamiento continuo (-360° a +720°)
+      for (let cycle = -1; cycle <= 2; cycle++) {
+        for (let deg = 0; deg < 360; deg += 15) {
+          const absDeg = (deg + 360) % 360;
+          const isMajor = deg % 45 === 0;
+          const label = cardinalMap[absDeg] || `${absDeg}°`;
+          html += `
+            <div class="ar-compass-tick ${isMajor ? 'major' : ''}">
+              <div class="tick-line"></div>
+              ${isMajor ? `<span class="tick-label">${label}</span>` : ''}
+            </div>
+          `;
+        }
+      }
+      arCompassTrack.innerHTML = html;
     }
+    buildCompassTrack();
 
-    btnToggleInvert.addEventListener('click', () => {
-      invertOffset = (invertOffset === 0) ? 180 : 0;
-      localStorage.setItem('cuenca_invert_180', (invertOffset === 180).toString());
-      btnToggleInvert.style.background = invertOffset === 180 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)';
-      actualizarBrujulaYVisor();
-    });
-
-    // FÓRMULA DE RUMBO DIRECTO (Ortodrómica / Gran Círculo)
+    // CÁLCULO DE RUMBO DIRECTO (Fórmula ortodrómica)
     function calculateBearing(lat1, lon1, lat2, lon2) {
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
@@ -168,7 +222,7 @@
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // CÁMARA TRASERA
+    // INICIAR CÁMARA TRASERA
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -178,27 +232,27 @@
         video.srcObject = stream;
         video.play();
       } catch (err) {
-        console.warn("Cámara no disponible:", err);
+        console.warn("Cámara trasera no disponible:", err);
       }
     }
 
-    // ORIENTACIÓN Y SENSORES
+    // GESTIÓN DE ORIENTACIÓN
     function handleOrientation(e) {
       let rawHeading = null;
 
-      // iOS Safari
+      // iOS Safari (grados directos de Norte magnético)
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
         rawHeading = e.webkitCompassHeading;
       } 
-      // Android / W3C
+      // Android / Estándar W3C (alpha antihorario normalizado a horario)
       else if (e.alpha !== null) {
         rawHeading = (360 - e.alpha) % 360;
       }
 
       if (rawHeading === null) return;
+      currentHeading = rawHeading;
 
-      currentHeading = (rawHeading + invertOffset) % 360;
-
+      // Detección de inclinación: plano sobre mano (beta <= 45°) vs vertical frente a los ojos (beta > 45°)
       const beta = Math.abs(e.beta || 0);
       const wasVertical = isVertical;
       isVertical = beta > 45;
@@ -208,49 +262,79 @@
           compassMode.style.display = "none";
           arMode.style.display = "flex";
           video.style.display = "block";
+          toggleReticleBtn.style.display = "flex"; // Botón de mira visible únicamente en AR
         } else {
           arMode.style.display = "none";
           compassMode.style.display = "flex";
           video.style.display = "none";
+          toggleReticleBtn.style.display = "none"; // Se oculta en modo horizontal
         }
       }
 
-      actualizarBrujulaYVisor();
+      actualizarVista();
     }
 
-    function actualizarBrujulaYVisor() {
-      // 1. Roseta cardinal
+    function actualizarVista() {
+      // 1. MODO HORIZONTAL:
+      // Rotación de la roseta cardinal
       compassDial.style.transform = `rotate(${-currentHeading}deg)`;
 
-      // 2. Aguja a Cuenca
+      // Aguja apuntando a Cuenca
       const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
       cuencaNeedle.style.transform = `rotate(${needleAngle}deg)`;
 
-      // 3. Desvío relativo normalizado (-180° a +180°)
+      // Desvío angular relativo normalizado entre -180° y +180°
       let diff = ((bearingToCuenca - currentHeading + 540) % 360) - 180;
       const isLookingAtCuenca = Math.abs(diff) <= TOLERANCE_DEG;
 
-      arDiffAngle.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'a la derecha ➡️' : '⬅️ a la izquierda'}`;
-
+      // Actualización del triángulo inmóvil superior y letreros
       if (isLookingAtCuenca) {
-        circleReticle.classList.add('on-target');
-        casasReticle.classList.add('on-target');
+        fixedTriangle.classList.add('aligned');
         needleHead.style.borderBottomColor = "#10b981";
+        bannerStatusText.textContent = "Mirando a Cuenca";
+        bannerStatusText.classList.add('aligned');
         targetDot.classList.add('active');
         targetStatusLabel.textContent = "¡Mirando a Cuenca!";
+        
+        // Retículos AR
+        circleReticle.classList.add('on-target');
+        casasReticle.classList.add('on-target');
         arGuidanceText.textContent = "🎯 ¡Estás mirando a Cuenca!";
+        arGuidanceText.classList.add('on-target');
       } else {
-        circleReticle.classList.remove('on-target');
-        casasReticle.classList.remove('on-target');
+        fixedTriangle.classList.remove('aligned');
         needleHead.style.borderBottomColor = "#ef4444";
+        bannerStatusText.textContent = "Buscando Cuenca";
+        bannerStatusText.classList.remove('aligned');
         targetDot.classList.remove('active');
         targetStatusLabel.textContent = "Buscando Cuenca";
+        
+        // Retículos AR
+        circleReticle.classList.remove('on-target');
+        casasReticle.classList.remove('on-target');
         arGuidanceText.textContent = diff > 0 ? "Gira a la derecha ➡️" : "⬅️ Gira a la izquierda";
+        arGuidanceText.classList.remove('on-target');
       }
 
+      // 2. MODO AR: Brújula Horizontal con triángulo de Cuenca
+      // La cinta se desplaza según el rumbo del dispositivo (4px por grado)
+      const pxPerDegree = 4;
+      const offsetPx = -currentHeading * pxPerDegree;
+      arCompassTrack.style.transform = `translateX(${offsetPx}px)`;
+
+      // El triángulo de Cuenca se coloca en la cinta horizontal señalando su ubicación
+      const clampedDiff = Math.max(-130, Math.min(130, diff * pxPerDegree));
+      arCuencaTargetPin.style.transform = `translateX(calc(-50% + ${clampedDiff}px))`;
+      if (isLookingAtCuenca) {
+        arCuencaTargetPin.classList.add('aligned');
+      } else {
+        arCuencaTargetPin.classList.remove('aligned');
+      }
+
+      // 3. BARRA INFERIOR: Diagnóstico y Grados a girar
       debugHeading.textContent = `${Math.round(currentHeading)}°`;
       debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
-      debugDiff.textContent = `${Math.round(diff)}°`;
+      debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'a la der. ➡️' : '⬅️ a la izq.'}`;
     }
 
     // GPS
@@ -269,26 +353,34 @@
           distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
 
           distanceLabel.textContent = `A ${Math.round(distanceKm)} km en línea recta`;
-          actualizarBrujulaYVisor();
+          actualizarVista();
         },
         (err) => {
           console.warn("Aviso GPS:", err);
+          // Coordenadas predeterminadas (Madrid) en caso de pruebas sin GPS activo
           userLat = 40.4168;
           userLon = -3.7038;
           bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
           distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
           distanceLabel.textContent = `Aprox. ${Math.round(distanceKm)} km (Modo estimado)`;
-          actualizarBrujulaYVisor();
+          actualizarVista();
         },
         { enableHighAccuracy: true, maximumAge: 5000 }
       );
     }
 
-    // ARRANQUE Y PERMISOS
-    startBtn.addEventListener('click', async () => {
+    // FLUJO DE INICIO: Primer modal -> Segundo modal de calibración -> App activa
+    startBtn.addEventListener('click', () => {
+      permissionModal.style.display = 'none';
+      calibrationModal.style.display = 'flex';
+    });
+
+    calibrationOkBtn.addEventListener('click', async () => {
+      calibrationModal.style.display = 'none';
       initGPS();
       await startCamera();
 
+      // Solicitud de sensores de orientación (iOS 13+ y Android)
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const res = await DeviceOrientationEvent.requestPermission();
@@ -307,22 +399,20 @@
           window.addEventListener('deviceorientation', handleOrientation, true);
         }
       }
-
-      modal.style.display = 'none';
     });
 
-    // ALTERNAR VISOR ENTRE CASAS COLGADAS Y CÍRCULO
+    // ALTERNAR MIRA (Círculo en cruz vs Casas Colgadas)
     toggleReticleBtn.addEventListener('click', () => {
       if (reticleMode === 'casas') {
         reticleMode = 'circle';
         casasReticle.style.display = 'none';
-        circleReticle.style.display = 'block';
+        circleReticle.style.display = 'flex';
         reticleModeLabel.textContent = "🏛️ Casas Colgadas";
       } else {
         reticleMode = 'casas';
         circleReticle.style.display = 'none';
         casasReticle.style.display = 'block';
-        reticleModeLabel.textContent = "⭕ Círculo";
+        reticleModeLabel.textContent = "⭕ Mira Cruz";
       }
     });
   </script>
