@@ -14,9 +14,12 @@ const TOLERANCE_DEG = 12;
 const PX_PER_DEG = 4;
 let wasAlignedLastFrame = false;
 
+// Detección de plataforma
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/.test(navigator.userAgent);
 
+// CONTROL DE PRECISIÓN Y FILTRADO REAL
 let precisionState = 'low';
 let appIniciada = false;
 let precisionFinalizada = false;
@@ -76,51 +79,67 @@ function requestAppFullscreen() {
   else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
 }
 
-// Instrucciones según plataforma
+// TEXTOS DE CALIBRACIÓN COMPLETOS Y ESPECÍFICOS SEGÚN DISPOSITIVO
 function setupInstructionsText() {
   if (isIOS) {
     calibrationInstructions.innerHTML = `
       <p>La brújula de tu <strong>iPhone</strong> detecta interferencias magnéticas.</p>
       <ol class="calibration-steps">
         <li>Mueve el iPhone dibujando un <strong>«8» amplio en el aire</strong>.</li>
-        <li>Aléjate de fundas con imanes o superficies metálicas.</li>
+        <li>Aléjate de <strong>fundas con imanes (MagSafe)</strong> o piezas metálicas.</li>
+        <li>Si no sube la precisión, entra en: <em>Ajustes &gt; Privacidad &gt; Localización &gt; Servicios del sistema</em> y verifica que <strong>Calibración de la brújula</strong> esté activada.</li>
+      </ol>
+    `;
+  } else if (isAndroid) {
+    calibrationInstructions.innerHTML = `
+      <p>El sensor magnético de tu <strong>Android</strong> requiere calibración.</p>
+      <ol class="calibration-steps">
+        <li>Mueve el teléfono en el aire trazando la forma de un <strong>«8» amplio</strong>, girando la muñeca sobre los 3 ejes.</li>
+        <li>Aléjate de ordenadores, cables de alta potencia o fundas magnéticas.</li>
+        <li>Si persiste, abre <strong>Google Maps</strong>, toca tu punto azul de ubicación y pulsa en <em>«Calibrar brújula»</em>.</li>
       </ol>
     `;
   } else {
     calibrationInstructions.innerHTML = `
-      <p>El sensor magnético requiere calibración.</p>
-      <ol class="calibration-steps">
-        <li>Traza un <strong>«8» amplio en el aire</strong> girando la muñeca sobre los 3 ejes.</li>
-        <li>Aléjate de ordenadores o imanes.</li>
-      </ol>
+      <p>Mueve el dispositivo formando un <strong>«8» en el aire</strong> para calibrar los sensores magnéticos.</p>
     `;
   }
 }
 setupInstructionsText();
 
-// Evaluación de precisión magnética
+// EVALUACIÓN DE PRECISIÓN Y BLOQUEO DE CALIBRACIÓN DEFINITIVA
 function evaluarPrecisionReal(event, rawHeading) {
+  if (precisionFinalizada) return; // Si ya fue calibrada con éxito, no se vuelve a bloquear
+
   totalSamples++;
   let isAccurate = false;
 
   if (isIOS) {
     const acc = event.webkitCompassAccuracy;
-    if (typeof acc !== 'undefined' && acc !== null && acc >= 0 && acc <= 20) {
-      isAccurate = true;
+    if (typeof acc !== 'undefined' && acc !== null) {
+      // 0 a 25 grados de precisión es aceptable para navegación AR
+      if (acc >= 0 && acc <= 25) {
+        isAccurate = true;
+      }
     }
   } else {
     if (event.absolute === true && rawHeading !== null) {
       headingHistory.push(rawHeading);
-      if (headingHistory.length > HISTORY_SIZE) headingHistory.shift();
+      if (headingHistory.length > HISTORY_SIZE) {
+        headingHistory.shift();
+      }
 
-      if (headingHistory.length >= HISTORY_SIZE && totalSamples > 20) {
+      if (headingHistory.length >= HISTORY_SIZE && totalSamples > 15) {
         let maxDiff = 0;
         for (let i = 1; i < headingHistory.length; i++) {
           let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
           if (d > 180) d = 360 - d;
           if (d > maxDiff) maxDiff = d;
         }
-        if (maxDiff < 25) isAccurate = true;
+        // Tolerancia estable: no fluctúa erráticamente más de 30° entre muestras
+        if (maxDiff < 30) {
+          isAccurate = true;
+        }
       }
     }
   }
@@ -138,32 +157,47 @@ function evaluarPrecisionReal(event, rawHeading) {
       calibrationModal.style.display = "flex";
       actualizarVisibilidadApp();
     } else if (precisionState === 'high') {
-      if (calibrationModal.style.display !== "none") {
-        accuracyStatusTag.textContent = "Precisión: Alta";
-        accuracyStatusTag.className = "accuracy-high";
+      accuracyStatusTag.textContent = "Precisión: Alta";
+      accuracyStatusTag.className = "accuracy-high";
 
-        if (!transitionToMainTimeout) {
-          transitionToMainTimeout = setTimeout(() => {
-            calibrationModal.style.display = "none";
-            precisionFinalizada = true;
-            transitionToMainTimeout = null;
-            actualizarVisibilidadApp();
-          }, 2000);
-        }
-      } else {
-        precisionFinalizada = true;
-        actualizarVisibilidadApp();
+      if (!transitionToMainTimeout) {
+        transitionToMainTimeout = setTimeout(() => {
+          calibrationModal.style.display = "none";
+          precisionFinalizada = true; // Se marca como calibrada y no vuelve a saltar
+          transitionToMainTimeout = null;
+          actualizarVisibilidadApp();
+        }, 1400);
       }
     }
   }
 }
 
-// Discriminación con umbral de 20º: Plano (Brújula) vs Levantado (AR)
+// LECTURA PREVIA PASIVA (Verifica si el sensor ya viene calibrado)
+function iniciarEvaluacionPasiva() {
+  const handlerPasivo = (e) => {
+    let h = null;
+    if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
+      h = e.webkitCompassHeading;
+    } else if (e.alpha !== null) {
+      h = (360 - e.alpha) % 360;
+    }
+    evaluarPrecisionReal(e, h);
+  };
+
+  if ('ondeviceorientationabsolute' in window) {
+    window.addEventListener('deviceorientationabsolute', handlerPasivo, true);
+  } else if ('ondeviceorientation' in window) {
+    window.addEventListener('deviceorientation', handlerPasivo, true);
+  }
+}
+iniciarEvaluacionPasiva();
+
+// DISCRIMINACIÓN: PLANO A 20º (BRÚJULA) VS LEVANTADO (AR)
 function evaluarPosturaYModo(beta, gamma) {
   const absB = Math.abs(beta || 0);
   const absG = Math.abs(gamma || 0);
 
-  // 1. REGLA PLANO: Solo brújula si ambos ejes están casi paralelos al suelo (umbral 20°)
+  // 1. REGLA PLANO: Solo brújula si ambos ejes están en paralelo al suelo (tolerancia de 20°)
   const esPlano = (absB < 20) && (absG < 20);
 
   if (esPlano) {
@@ -174,11 +208,11 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
-    // En el plano de la mano NUNCA se activa el aviso
+    // En la palma de la mano NUNCA se activa el modal de aviso
     arOrientationModal.style.display = "none";
 
   } else {
-    // 2. MODO AR: En cualquier otra postura fuera del plano
+    // 2. MODO AR: En cualquier otra postura levantada
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -188,7 +222,7 @@ function evaluarPosturaYModo(beta, gamma) {
     }
 
     // 3. REGLA APAISADO EN MODO AR:
-    // Si en el aire el teléfono se gira de lado (absG > 45) o la ventana está apaisada
+    // Si en el aire el teléfono se gira de lado (absG > 45) o el navegador reporta landscape
     const estaDeLado = absG > 45;
     const pantallaApaisada = window.innerWidth > window.innerHeight;
 
@@ -202,7 +236,7 @@ function evaluarPosturaYModo(beta, gamma) {
   actualizarVisibilidadApp();
 }
 
-// Lectura de orientación general
+// LECTURA DE ORIENTACIÓN GENERAL
 function handleOrientation(e) {
   let rawHeading = null;
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -265,7 +299,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// Inicialización de la cámara trasera
+// Cámara trasera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -279,7 +313,7 @@ async function startCamera() {
   }
 }
 
-// Actualización visual de brújula, agujas y retículo
+// Actualización de agujas y retículo
 function actualizarVista() {
   compassDial.style.transform = `rotate(${-currentHeading}deg)`;
   const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
@@ -334,7 +368,7 @@ function actualizarVista() {
   debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
 }
 
-// Seguimiento GPS
+// Geolocalización
 function initGPS() {
   if (!navigator.geolocation) return;
 
@@ -367,7 +401,8 @@ startBtn.addEventListener('click', async () => {
   appIniciada = true;
   actualizarVisibilidadApp();
 
-  if (precisionState === 'low') {
+  // Si la brújula no estaba calibrada previamente, muestra el modal
+  if (!precisionFinalizada && precisionState === 'low') {
     accuracyStatusTag.textContent = "Precisión: Baja";
     accuracyStatusTag.className = "accuracy-low";
     calibrationModal.style.display = "flex";
@@ -397,7 +432,7 @@ startBtn.addEventListener('click', async () => {
   }
 });
 
-// Selector de mira (Casas Colgadas / Círculo con cruz)
+// Selector de mira
 toggleReticleBtn.addEventListener('click', () => {
   if (reticleMode === 'casas') {
     reticleMode = 'circle';
@@ -412,7 +447,6 @@ toggleReticleBtn.addEventListener('click', () => {
   }
 });
 
-// Listener de cambio de tamaño de ventana
 window.addEventListener('resize', () => {
   if (appIniciada) actualizarVisibilidadApp();
 });
