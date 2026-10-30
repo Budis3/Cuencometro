@@ -184,6 +184,18 @@
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
 
+    // SOLICITUD DE PANTALLA COMPLETA
+    function requestAppFullscreen() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch(() => {});
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen().catch(() => {});
+      }
+    }
+
     // INSTRUCCIONES ESPECÍFICAS
     function setupInstructionsText() {
       if (isIOS) {
@@ -472,8 +484,11 @@
       );
     }
 
-    // BOTÓN "COMENZAR EXPERIENCIA"
+    // BOTÓN "COMENZAR EXPERIENCIA" (PANTALLA COMPLETA + PERMISOS)
     startBtn.addEventListener('click', async () => {
+      // Intentar pasar a pantalla completa en el gesto táctil del usuario
+      requestAppFullscreen();
+
       permissionModal.style.display = 'none';
       appIniciada = true;
 
