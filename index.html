@@ -11,7 +11,7 @@
   <!-- Elemento de Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal 1: Bienvenida y Permisos Iniciales -->
+  <!-- Modal 1: Permisos Iniciales -->
   <div id="permission-modal" class="modal-overlay">
     <div class="modal-card">
       <div class="icon-cuenca">📍</div>
@@ -23,15 +23,17 @@
     </div>
   </div>
 
-  <!-- Modal 2: Calibración y Aviso de Interferencias Ferromagnéticas -->
+  <!-- Modal 2: Aviso Dinámico de Calibración por Baja Precisión -->
   <div id="calibration-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
       <div class="icon-cuenca">♾️</div>
       <h1>Calibra tu Brújula</h1>
-      <p>Para obtener la máxima precisión, asegúrate de estar <strong>alejado de objetos metálicos o materiales ferromagnéticos</strong> y mueve el teléfono dibujando un «8» en el aire.</p>
-      <button class="btn-primary" id="calibration-ok-btn">
-        <span>Entendido, ¡vamos!</span>
-      </button>
+      <p id="calibration-os-instructions">Detectando dispositivo...</p>
+      
+      <!-- Indicador dinámico de precisión con efecto Glow -->
+      <div class="accuracy-indicator-box">
+        <span id="accuracy-status-tag" class="accuracy-low">Precisión: Baja</span>
+      </div>
     </div>
   </div>
 
@@ -146,11 +148,19 @@
     const TOLERANCE_DEG = 12;
     const PX_PER_DEG = 4;
 
+    // Variables de control de precisión y calibración
+    let isCalibrating = false;
+    let calibrationTimeout = null;
+    let sensorEventsReceived = 0;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     // Elementos DOM
     const permissionModal = document.getElementById('permission-modal');
     const calibrationModal = document.getElementById('calibration-modal');
+    const calibrationOsInstructions = document.getElementById('calibration-os-instructions');
+    const accuracyStatusTag = document.getElementById('accuracy-status-tag');
     const startBtn = document.getElementById('start-btn');
-    const calibrationOkBtn = document.getElementById('calibration-ok-btn');
     const video = document.getElementById('camera-video');
     const compassMode = document.getElementById('compass-mode');
     const arMode = document.getElementById('ar-mode');
@@ -171,6 +181,40 @@
     const debugHeading = document.getElementById('debug-heading');
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
+
+    // Mensajes adaptados por sistema operativo
+    function setPlatformCalibrationInstructions() {
+      if (isIOS) {
+        calibrationOsInstructions.innerHTML = 
+          "Se detectan interferencias magnéticas. Mueve tu <strong>iPhone formando un «8» en el aire</strong> y aléjalo de fundas con imanes (MagSafe) u objetos metálicos.";
+      } else {
+        calibrationOsInstructions.innerHTML = 
+          "La brújula requiere calibración. Mueve tu <strong>dispositivo Android trazando un «8» en el aire</strong> y gira el móvil sobre sus ejes lejos de superficies metálicas.";
+      }
+    }
+
+    function triggerCalibrationModal() {
+      if (isCalibrating) return;
+      isCalibrating = true;
+      setPlatformCalibrationInstructions();
+      accuracyStatusTag.textContent = "Precisión: Baja";
+      accuracyStatusTag.className = "accuracy-low";
+      calibrationModal.style.display = 'flex';
+    }
+
+    function onHighAccuracyAchieved() {
+      if (!isCalibrating) return;
+      accuracyStatusTag.textContent = "Precisión: Alta";
+      accuracyStatusTag.className = "accuracy-high";
+
+      if (!calibrationTimeout) {
+        calibrationTimeout = setTimeout(() => {
+          calibrationModal.style.display = 'none';
+          isCalibrating = false;
+          calibrationTimeout = null;
+        }, 2000);
+      }
+    }
 
     // Generar la escala graduada horizontal continua (-360° a +720°)
     function buildCompassTrack() {
@@ -231,14 +275,35 @@
       }
     }
 
-    // ORIENTACIÓN
+    // ORIENTACIÓN Y EVALUACIÓN DE PRECISIÓN
     function handleOrientation(e) {
+      sensorEventsReceived++;
       let rawHeading = null;
+      let isAccuracyLow = false;
 
+      // 1. Evaluación en iOS: webkitCompassAccuracy indica el margen de error en grados
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
         rawHeading = e.webkitCompassHeading;
-      } else if (e.alpha !== null) {
+        const accuracy = e.webkitCompassAccuracy;
+        // Margen > 15° o negativo (< 0) indica brújula descalibrada
+        if (typeof accuracy !== "undefined" && (accuracy < 0 || accuracy > 15)) {
+          isAccuracyLow = true;
+        }
+      } 
+      // 2. Evaluación en Android
+      else if (e.alpha !== null) {
         rawHeading = (360 - e.alpha) % 360;
+        // En los primeros instantes tras el inicio los sensores requieren estabilización
+        if (sensorEventsReceived < 15) {
+          isAccuracyLow = true;
+        }
+      }
+
+      // Gestión del modal de calibración condicional
+      if (isAccuracyLow) {
+        triggerCalibrationModal();
+      } else if (isCalibrating) {
+        onHighAccuracyAchieved();
       }
 
       if (rawHeading === null) return;
@@ -350,14 +415,9 @@
       );
     }
 
-    // BOTONES Y MODALES
-    startBtn.addEventListener('click', () => {
+    // INICIO DIRECTO (Acceso a hardware y escucha de precisión)
+    startBtn.addEventListener('click', async () => {
       permissionModal.style.display = 'none';
-      calibrationModal.style.display = 'flex';
-    });
-
-    calibrationOkBtn.addEventListener('click', async () => {
-      calibrationModal.style.display = 'none';
       initGPS();
       await startCamera();
 
