@@ -37,19 +37,6 @@
 
   <!-- Contenedor General de la Aplicación -->
   <div id="app-container">
-    
-    <!-- Barra Superior -->
-    <div class="top-bar">
-      <div class="badge-status">
-        <div class="dot" id="target-dot"></div>
-        <span id="target-status-label">Buscando...</span>
-      </div>
-
-      <!-- Selector de mira (visible exclusivamente en Modo AR) -->
-      <button class="btn-icon" id="toggle-reticle-btn" style="display: none;">
-        <span id="reticle-mode-label">⭕ Mira Cruz</span>
-      </button>
-    </div>
 
     <!-- 1. MODO BRÚJULA (PLANO EN LA MANO) -->
     <div id="compass-mode">
@@ -126,6 +113,14 @@
       <div style="height: 10px;"></div>
     </div>
 
+    <!-- Botón Flotante Inferior Derecho: Cambiar Mira (visible únicamente en Modo AR) -->
+    <div class="ar-reticle-toggle-wrapper" id="reticle-toggle-wrapper" style="display: none;">
+      <span class="reticle-toggle-label">Cambiar mira</span>
+      <button class="btn-toggle-round" id="toggle-reticle-btn" aria-label="Cambiar mira">
+        <span id="reticle-icon">⭕</span>
+      </button>
+    </div>
+
     <!-- Barra Inferior de Diagnóstico -->
     <div class="bottom-info">
       <div>Rumbo Móvil: <span id="debug-heading">--°</span></div>
@@ -165,10 +160,9 @@
     const fixedTriangle = document.getElementById('fixed-triangle');
     const bannerStatusText = document.getElementById('banner-status-text');
     const distanceLabel = document.getElementById('distance-label');
-    const targetDot = document.getElementById('target-dot');
-    const targetStatusLabel = document.getElementById('target-status-label');
+    const reticleToggleWrapper = document.getElementById('reticle-toggle-wrapper');
     const toggleReticleBtn = document.getElementById('toggle-reticle-btn');
-    const reticleModeLabel = document.getElementById('reticle-mode-label');
+    const reticleIcon = document.getElementById('reticle-icon');
     const circleReticle = document.getElementById('circle-reticle');
     const casasReticle = document.getElementById('casas-reticle');
     const arCompassTrack = document.getElementById('ar-compass-track');
@@ -260,12 +254,12 @@
           compassMode.style.display = "none";
           arMode.style.display = "flex";
           video.style.display = "block";
-          toggleReticleBtn.style.display = "flex";
+          reticleToggleWrapper.style.display = "flex";
         } else {
           arMode.style.display = "none";
           compassMode.style.display = "flex";
           video.style.display = "none";
-          toggleReticleBtn.style.display = "none";
+          reticleToggleWrapper.style.display = "none";
         }
       }
 
@@ -287,8 +281,6 @@
         needleHead.style.borderBottomColor = "#10b981";
         bannerStatusText.textContent = "Mirando a Cuenca";
         bannerStatusText.classList.add('aligned');
-        targetDot.classList.add('active');
-        targetStatusLabel.textContent = "¡Mirando a Cuenca!";
         
         circleReticle.classList.add('on-target');
         casasReticle.classList.add('on-target');
@@ -299,8 +291,6 @@
         needleHead.style.borderBottomColor = "#ef4444";
         bannerStatusText.textContent = "Buscando Cuenca";
         bannerStatusText.classList.remove('aligned');
-        targetDot.classList.remove('active');
-        targetStatusLabel.textContent = "Buscando Cuenca";
         
         circleReticle.classList.remove('on-target');
         casasReticle.classList.remove('on-target');
@@ -397,12 +387,12 @@
         reticleMode = 'circle';
         casasReticle.style.display = 'none';
         circleReticle.style.display = 'flex';
-        reticleModeLabel.textContent = "🏛️ Casas Colgadas";
+        reticleIcon.textContent = "🏛️";
       } else {
         reticleMode = 'casas';
         circleReticle.style.display = 'none';
         casasReticle.style.display = 'block';
-        reticleModeLabel.textContent = "⭕ Mira Cruz";
+        reticleIcon.textContent = "⭕";
       }
     });
   </script>
