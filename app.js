@@ -33,6 +33,7 @@ let totalSamples = 0;
 const appContainer = document.getElementById('app-container');
 const permissionModal = document.getElementById('permission-modal');
 const calibrationModal = document.getElementById('calibration-modal');
+const arOrientationModal = document.getElementById('ar-orientation-modal');
 const calibrationInstructions = document.getElementById('calibration-instructions');
 const accuracyStatusTag = document.getElementById('accuracy-status-tag');
 const startBtn = document.getElementById('start-btn');
@@ -57,32 +58,25 @@ const debugHeading = document.getElementById('debug-heading');
 const debugCuenca = document.getElementById('debug-cuenca');
 const debugDiff = document.getElementById('debug-diff');
 
-// Control centralizado de visibilidad (Oculta la brújula si hay modales activos)
+// Control centralizado de visibilidad (Oculta la brújula si hay algún modal visible)
 function actualizarVisibilidadApp() {
   const modalInicioVisible = permissionModal.style.display !== 'none';
   const modalCalibracionVisible = calibrationModal.style.display !== 'none';
+  const modalOrientacionVisible = arOrientationModal.style.display !== 'none';
 
-  if (!appIniciada || modalInicioVisible || modalCalibracionVisible) {
+  if (!appIniciada || modalInicioVisible || modalCalibracionVisible || modalOrientacionVisible) {
     appContainer.classList.add('app-hidden');
   } else {
     appContainer.classList.remove('app-hidden');
   }
 }
 
-// Pantalla completa y bloqueo de orientación por software (en Android PWA / Fullscreen)
-async function requestAppFullscreenAndOrientation() {
+// Pantalla completa
+function requestAppFullscreen() {
   const docEl = document.documentElement;
-  try {
-    if (docEl.requestFullscreen) await docEl.requestFullscreen();
-    else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
-    else if (docEl.msRequestFullscreen) await docEl.msRequestFullscreen();
-  } catch (e) {
-    // Modo ventana o soporte parcial
-  }
-
-  if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock('portrait-primary').catch(() => {});
-  }
+  if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+  else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
+  else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
 }
 
 // Textos de calibración detallados según sistema
@@ -196,17 +190,20 @@ function iniciarEvaluacionPasiva() {
 }
 iniciarEvaluacionPasiva();
 
-// Conmutación pura Plano (Brújula) vs Levantado (Cámara/AR)
+// Postura: Plano (Brújula) vs AR (Vertical / Apaisado)
 function evaluarPosturaYModo(beta, gamma) {
-  const bRad = ((beta || 0) * Math.PI) / 180;
-  const gRad = ((gamma || 0) * Math.PI) / 180;
+  const b = beta || 0;
+  const g = gamma || 0;
 
-  // Inclinación angular respecto al plano del suelo
+  const bRad = (b * Math.PI) / 180;
+  const gRad = (g * Math.PI) / 180;
+
+  // Inclinación respecto al plano horizontal del suelo
   const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
-  const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
+  const anguloElevacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
-  // Menor a 25° respecto al suelo = Plano en mano (Brújula)
-  const esPlano = inclinacionSuelo < 25;
+  // MODO BRÚJULA: Plano en la palma (< 22° respecto al suelo)
+  const esPlano = anguloElevacionSuelo < 22;
 
   if (esPlano) {
     if (currentMode !== 'compass') {
@@ -216,8 +213,11 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
+    // En plano JAMÁS salta el aviso de apaisado
+    arOrientationModal.style.display = "none";
+
   } else {
-    // Mayor o igual a 25° = Levantado apuntando (AR)
+    // MODO AR (Levantado >= 22°)
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -225,12 +225,34 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "block";
       reticleToggleWrapper.style.display = "flex";
     }
+
+    // DISCRIMINACIÓN APAISADO EN MODO AR
+    const absB = Math.abs(b);
+    const absG = Math.abs(g);
+
+    let estaApaisado = false;
+
+    if (window.innerWidth > window.innerHeight) {
+      estaApaisado = true;
+    } else if (absB >= 65) {
+      // Casi vertical de pie: no salta por micro-ladeos (|gamma| debe ser > 60°)
+      estaApaisado = absG > 60;
+    } else {
+      // Inclinación media: salta si el eje horizontal domina claramente
+      estaApaisado = absG > 50 && absG > absB;
+    }
+
+    if (estaApaisado) {
+      arOrientationModal.style.display = "flex";
+    } else {
+      arOrientationModal.style.display = "none";
+    }
   }
 
   actualizarVisibilidadApp();
 }
 
-// Lectura de orientación
+// Lectura de sensores
 function handleOrientation(e) {
   let rawHeading = null;
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -251,7 +273,7 @@ function handleOrientation(e) {
   actualizarVista();
 }
 
-// Cinta de grados AR
+// Cinta métrica AR
 function buildCompassTrack() {
   const cardinalMap = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SO', 270: 'O', 315: 'NO' };
   let html = '';
@@ -389,7 +411,7 @@ function initGPS() {
 
 // Botón de inicio
 startBtn.addEventListener('click', async () => {
-  await requestAppFullscreenAndOrientation();
+  requestAppFullscreen();
 
   permissionModal.style.display = 'none';
   appIniciada = true;
@@ -441,5 +463,9 @@ toggleReticleBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('resize', () => {
-  if (appIniciada) actualizarVisibilidadApp();
+  if (appIniciada) {
+    const beta = window.lastBeta || 0;
+    const gamma = window.lastGamma || 0;
+    evaluarPosturaYModo(beta, gamma);
+  }
 });
