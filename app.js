@@ -19,7 +19,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/.test(navigator.userAgent);
 
-// CONTROL DE PRECISIÓN Y FILTRADO REAL
+// Control de precisión y filtrado
 let precisionState = 'low';
 let appIniciada = false;
 let precisionFinalizada = false;
@@ -190,7 +190,7 @@ function iniciarEvaluacionPasiva() {
 }
 iniciarEvaluacionPasiva();
 
-// Discriminación con umbral de 20º: Plano (Brújula) vs Levantado (AR)
+// Discriminación de postura: Plano (Brújula) vs AR (Vertical / Apaisado)
 function evaluarPosturaYModo(beta, gamma) {
   const b = beta || 0;
   const g = gamma || 0;
@@ -198,13 +198,14 @@ function evaluarPosturaYModo(beta, gamma) {
   const bRad = (b * Math.PI) / 180;
   const gRad = (g * Math.PI) / 180;
 
-  // 1. INCLINACIÓN RESPECTO AL PLANO HORIZONTAL (SUELO / MESA)
-  // 0° = móvil plano mirando al cielo | 90° = móvil levantado mirando al frente
-  const cosTilt = Math.cos(bRad) * Math.cos(gRad);
-  const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
+  // 1. INCLINACIÓN RESPECTO AL PLANO HORIZONTAL (SUELO)
+  // cosTilt mide qué fracción del vector normal de pantalla apunta al cielo.
+  // 1.0 = plano paralelo al suelo; 0.0 = totalmente vertical de pie.
+  const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
+  const anguloElevacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
-  // Umbral limpio: menos de 25° respecto al suelo = MODO BRÚJULA
-  const esPlano = inclinacionSuelo < 25;
+  // MODO BRÚJULA: Única y exclusivamente si está a menos de 22° respecto al suelo
+  const esPlano = anguloElevacionSuelo < 22;
 
   if (esPlano) {
     if (currentMode !== 'compass') {
@@ -217,7 +218,7 @@ function evaluarPosturaYModo(beta, gamma) {
     arOrientationModal.style.display = "none";
 
   } else {
-    // Levantado (>= 25°) = MODO AR
+    // MODO AR (Levantado en cualquier posición)
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -226,14 +227,23 @@ function evaluarPosturaYModo(beta, gamma) {
       reticleToggleWrapper.style.display = "flex";
     }
 
-    // 2. DISCRIMINACIÓN APAISADO EN MODO AR (SCREEN ROLL)
-    // Calcula la rotación física del dispositivo sobre su propio marco visual
-    const rollRad = Math.atan2(-Math.sin(gRad), Math.sin(bRad) * Math.cos(gRad));
-    const rollDeg = Math.abs(rollRad * (180 / Math.PI));
+    // 2. DISCRIMINACIÓN APAISADO EN MODO AR (SIN GIMBAL LOCK EN VERTICAL)
+    const absB = Math.abs(b);
+    const absG = Math.abs(g);
 
-    // Si el giro de pantalla sobrepasa los 50° hacia cualquier lado, está apaisado
-    // (o si el propio navegador detectó el cambio físico de viewport)
-    const estaApaisado = (rollDeg > 50 && rollDeg < 130) || (window.innerWidth > window.innerHeight);
+    // Si el móvil está casi vertical (absB > 65°), sabemos con certeza física que está de pie en retrato.
+    // Solo si el móvil se tumba de lado (|gamma| elevado y superior a |beta|), o si el navegador rota en pantalla apaisada:
+    let estaApaisado = false;
+
+    if (window.innerWidth > window.innerHeight) {
+      estaApaisado = true;
+    } else if (absB >= 65) {
+      // Casi vertical de pie: NUNCA está apaisado a menos que la inclinación lateral sea extrema (> 60°)
+      estaApaisado = absG > 60;
+    } else {
+      // Inclinación intermedia: solo si el ladeo lateral domina claramente
+      estaApaisado = absG > 50 && absG > absB;
+    }
 
     if (estaApaisado) {
       arOrientationModal.style.display = "flex";
