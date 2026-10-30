@@ -52,6 +52,7 @@ body {
   align-items: center;
   padding: 2rem;
   text-align: center;
+  transition: opacity 0.3s ease;
 }
 
 .modal-card {
@@ -84,11 +85,45 @@ body {
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.45;
-  margin-bottom: 1.8rem;
+  margin-bottom: 1.4rem;
 }
 
 .modal-card strong {
   color: #fff;
+}
+
+/* CAJA Y ETIQUETA DINÁMICA DE PRECISIÓN */
+.accuracy-indicator-box {
+  margin-top: 0.4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#accuracy-status-tag {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.45rem 1.2rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.5);
+  transition: color 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+/* Estado: Precisión Baja en Rojo */
+#accuracy-status-tag.accuracy-low {
+  color: var(--danger);
+  border: 1.5px solid rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+
+/* Estado: Precisión Alta en Verde con Glow */
+#accuracy-status-tag.accuracy-high {
+  color: var(--success);
+  border: 1.5px solid rgba(16, 185, 129, 0.8);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.85), inset 0 0 10px rgba(16, 185, 129, 0.35);
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
 }
 
 .btn-primary {
@@ -300,7 +335,7 @@ body {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  padding: 3.2rem 0 1rem 0; /* Desplazado hacia abajo simulando la antigua top-bar */
+  padding: 3.2rem 0 1rem 0;
   position: relative;
 }
 
@@ -479,12 +514,11 @@ body {
   width: 108px;
   height: 137px;
   display: block;
-  filter: none; /* Sin glow en rojo */
+  filter: none;
   transition: filter 0.15s;
 }
 
 .target-casas-glow-wrapper.on-target {
-  /* Glow activo solo al mirar a Cuenca */
   filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.8));
 }
 
@@ -529,7 +563,7 @@ body {
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
 }
 
-/* BOTÓN FLOTANTE INFERIOR DERECHO (+40% TAMAÑO Y TEXTO EN 2 LÍNEAS CENTRADO) */
+/* BOTÓN FLOTANTE INFERIOR DERECHO */
 .ar-reticle-toggle-wrapper {
   position: absolute;
   right: 1.2rem;
@@ -543,7 +577,7 @@ body {
 }
 
 .reticle-toggle-label {
-  font-size: 1.0rem;
+  font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.15;
   text-align: center;
@@ -553,7 +587,7 @@ body {
 }
 
 .btn-toggle-round {
-  width: 64px; /* +40% respecto a 46px */
+  width: 64px;
   height: 64px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.65);
@@ -561,7 +595,7 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.25);
   color: #fff;
-  font-size: 1.75rem; /* Proporcional al botón de 64px */
+  font-size: 1.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
