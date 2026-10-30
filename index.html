@@ -108,11 +108,16 @@
       </button>
     </div>
 
-    <!-- Barra Inferior de Diagnóstico -->
+    <!-- Barra Inferior de Diagnóstico con Acceso Rápido a Calibración -->
     <div class="bottom-info">
-      <div>Rumbo Móvil: <span id="debug-heading">--°</span></div>
-      <div>Rumbo Cuenca: <span id="debug-cuenca">--°</span></div>
-      <div>Giro requerido: <span id="debug-diff">--°</span></div>
+      <div>Rumbo: <span id="debug-heading">--°</span></div>
+      <div>Cuenca: <span id="debug-cuenca">--°</span></div>
+      <div>Giro: <span id="debug-diff">--°</span></div>
+      <!-- Indicador activo de precisión en barra inferior -->
+      <button class="btn-badge-accuracy" id="btn-manual-calibrate" title="Toca para recalibrar">
+        <span class="mini-dot" id="mini-acc-dot"></span>
+        <span id="mini-acc-text">Precisión</span>
+      </button>
     </div>
 
   </div>
@@ -138,14 +143,16 @@
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/.test(navigator.userAgent);
 
-    // ESTADO DE PRECISIÓN Y CALIBRACIÓN
-    // 'unknown' -> antes de recibir datos
-    // 'low' -> precisión deficiente
-    // 'high' -> precisión óptima
-    let precisionState = 'unknown';
+    // CONTROL DE PRECISIÓN Y FILTRADO REAL
+    let precisionState = 'low'; // Por defecto arranca en baja hasta que el sensor demuestre estabilidad
     let appIniciada = false;
     let precisionFinalizada = false;
     let transitionToMainTimeout = null;
+
+    // Historial para detección de ruido magnético y fluctuaciones
+    const headingHistory = [];
+    const HISTORY_SIZE = 12;
+    let totalSamples = 0;
 
     // Elementos DOM
     const permissionModal = document.getElementById('permission-modal');
@@ -173,8 +180,11 @@
     const debugHeading = document.getElementById('debug-heading');
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
+    const btnManualCalibrate = document.getElementById('btn-manual-calibrate');
+    const miniAccDot = document.getElementById('mini-acc-dot');
+    const miniAccText = document.getElementById('mini-acc-text');
 
-    // INSTRUCCIONES ESPECÍFICAS SEGÚN EL SISTEMA OPERATIVO
+    // INSTRUCCIONES ESPECÍFICAS
     function setupInstructionsText() {
       if (isIOS) {
         calibrationInstructions.innerHTML = `
@@ -190,8 +200,8 @@
           <p>El sensor magnético de tu <strong>Android</strong> requiere calibración.</p>
           <ol class="calibration-steps">
             <li>Mueve el teléfono en el aire trazando la forma de un <strong>«8» amplio</strong>, girando la muñeca sobre los 3 ejes.</li>
-            <li>Aléjate de ordenadores, fuentes de corriente o carcasas imantadas.</li>
-            <li>Si persiste, abre <strong>Google Maps</strong>, toca tu punto azul de ubicación y pulsa en <em>«Calibrar»</em>.</li>
+            <li>Aléjate de ordenadores, cables de alta potencia o fundas magnéticas.</li>
+            <li>Si persiste, abre <strong>Google Maps</strong>, toca tu punto azul de ubicación y pulsa en <em>«Calibrar brújula»</em>.</li>
           </ol>
         `;
       } else {
@@ -202,30 +212,60 @@
     }
     setupInstructionsText();
 
-    // COMPROBACIÓN CONTINUA DE PRECISIÓN
-    function evaluarPrecisionSensor(event) {
-      if (precisionFinalizada) return;
+    // EVALUACIÓN DE PRECISIÓN BASADA EN SENSORES REALES Y ANÁLISIS DE VARIANZA
+    function evaluarPrecisionReal(event, rawHeading) {
+      totalSamples++;
+
+      let isAccurate = false;
 
       if (isIOS) {
-        const accuracy = event.webkitCompassAccuracy;
-        if (typeof accuracy !== "undefined") {
-          // -1 = Descalibrado. > 20 = Margen de error alto.
-          if (accuracy < 0 || accuracy > 20) {
-            precisionState = 'low';
-          } else if (accuracy <= 15) {
-            precisionState = 'high';
+        // En iOS disponemos de la propiedad oficial de error angular
+        const acc = event.webkitCompassAccuracy;
+        if (typeof acc !== 'undefined' && acc !== null) {
+          // -1 indica no calibrado. Margen <= 15° indica buena calibración.
+          if (acc >= 0 && acc <= 18) {
+            isAccurate = true;
           }
         }
       } else {
-        if (typeof event.absolute !== "undefined" && event.absolute === false) {
-          precisionState = 'low';
-        } else if (event.alpha !== null) {
-          precisionState = 'high';
+        // En Android, Chrome NO expone webkitCompassAccuracy.
+        // Se analiza la estabilidad del vector y la disponibilidad de sensor absoluto:
+        if (event.absolute === true && rawHeading !== null) {
+          headingHistory.push(rawHeading);
+          if (headingHistory.length > HISTORY_SIZE) {
+            headingHistory.shift();
+          }
+
+          // Tras acumular al menos 10 muestras continuas sin saltos anómalos
+          if (headingHistory.length >= HISTORY_SIZE && totalSamples > 20) {
+            let maxDiff = 0;
+            for (let i = 1; i < headingHistory.length; i++) {
+              let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
+              if (d > 180) d = 360 - d;
+              if (d > maxDiff) maxDiff = d;
+            }
+            // Si las lecturas no tienen jitter electromagnético extremo (> 30° entre muestras continuas)
+            if (maxDiff < 25) {
+              isAccurate = true;
+            }
+          }
         }
       }
 
-      // Si el usuario ya pulsó "Comenzar experiencia", gestionamos la visibilidad del modal
-      if (appIniciada) {
+      // Actualizar estado
+      precisionState = isAccurate ? 'high' : 'low';
+
+      // Actualizar indicador discreto de barra inferior
+      if (precisionState === 'high') {
+        miniAccDot.className = 'mini-dot active';
+        miniAccText.textContent = 'Alta';
+      } else {
+        miniAccDot.className = 'mini-dot';
+        miniAccText.textContent = 'Baja';
+      }
+
+      // Gestión del modal solo si la comprobación aún no ha quedado cerrada definitivamente
+      if (appIniciada && !precisionFinalizada) {
         if (precisionState === 'low') {
           if (transitionToMainTimeout) {
             clearTimeout(transitionToMainTimeout);
@@ -235,37 +275,53 @@
           accuracyStatusTag.className = "accuracy-low";
           calibrationModal.style.display = "flex";
         } else if (precisionState === 'high') {
-          // Si el modal nunca estuvo visible (ya era alta desde el inicio), finalizamos de inmediato
-          if (calibrationModal.style.display === "none") {
+          // Si el modal está visible en pantalla, mostramos el éxito en verde y salimos en 2s
+          if (calibrationModal.style.display !== "none") {
+            accuracyStatusTag.textContent = "Precisión: Alta";
+            accuracyStatusTag.className = "accuracy-high";
+
+            if (!transitionToMainTimeout) {
+              transitionToMainTimeout = setTimeout(() => {
+                calibrationModal.style.display = "none";
+                precisionFinalizada = true;
+                transitionToMainTimeout = null;
+              }, 2000);
+            }
+          } else {
+            // Ya era alta antes de abrir el modal: no se abre
             precisionFinalizada = true;
-            return;
-          }
-
-          // Si el modal estaba visible, cambiamos a verde con Glow y esperamos 2 segundos
-          accuracyStatusTag.textContent = "Precisión: Alta";
-          accuracyStatusTag.className = "accuracy-high";
-
-          if (!transitionToMainTimeout) {
-            transitionToMainTimeout = setTimeout(() => {
-              calibrationModal.style.display = "none";
-              precisionFinalizada = true; // No se vuelve a comprobar
-              transitionToMainTimeout = null;
-            }, 2000);
           }
         }
       }
     }
 
-    // ARRANQUE PASIVO DE LA COMPROBACIÓN NADA MÁS CARGAR LA PÁGINA
+    // PRE-EVALUACIÓN PASIVA INMEDIATA
     function iniciarEvaluacionPasiva() {
-      // En Android y PC los sensores se pueden leer de inmediato
+      const handlerPasivo = (e) => {
+        let h = null;
+        if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
+          h = e.webkitCompassHeading;
+        } else if (e.alpha !== null) {
+          h = (360 - e.alpha) % 360;
+        }
+        evaluarPrecisionReal(e, h);
+      };
+
       if ('ondeviceorientationabsolute' in window) {
-        window.addEventListener('deviceorientationabsolute', evaluarPrecisionSensor, true);
+        window.addEventListener('deviceorientationabsolute', handlerPasivo, true);
       } else if ('ondeviceorientation' in window) {
-        window.addEventListener('deviceorientation', evaluarPrecisionSensor, true);
+        window.addEventListener('deviceorientation', handlerPasivo, true);
       }
     }
     iniciarEvaluacionPasiva();
+
+    // BOTÓN MANUAL PARA REABRIR LA CALIBRACIÓN EN CUALQUIER MOMENTO
+    btnManualCalibrate.addEventListener('click', () => {
+      precisionFinalizada = false;
+      accuracyStatusTag.textContent = "Precisión: Baja";
+      accuracyStatusTag.className = "accuracy-low";
+      calibrationModal.style.display = "flex";
+    });
 
     // CONSTRUIR CINTA AR
     function buildCompassTrack() {
@@ -312,7 +368,7 @@
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // CÁMARA
+    // CÁMARA TRASERA
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -326,14 +382,8 @@
       }
     }
 
-    // ORIENTACIÓN (LÓGICA PRINCIPAL DE LA APP)
+    // ORIENTACIÓN (LÓGICA PRINCIPAL)
     function handleOrientation(e) {
-      // 1. Evaluar precisión si aún no se ha dado el visto bueno definitivo
-      if (!precisionFinalizada) {
-        evaluarPrecisionSensor(e);
-      }
-
-      // 2. Obtener rumbo
       let rawHeading = null;
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
         rawHeading = e.webkitCompassHeading;
@@ -341,10 +391,13 @@
         rawHeading = (360 - e.alpha) % 360;
       }
 
+      // Evaluar precisión continuamente
+      evaluarPrecisionReal(e, rawHeading);
+
       if (rawHeading === null) return;
       currentHeading = rawHeading;
 
-      // 3. Postura: plano vs vertical
+      // Postura: plano vs vertical
       const beta = Math.abs(e.beta || 0);
       const wasVertical = isVertical;
       isVertical = beta > 45;
@@ -415,7 +468,7 @@
       // 3. BARRA INFERIOR
       debugHeading.textContent = `${Math.round(currentHeading)}°`;
       debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
-      debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'a la der. ➡️' : '⬅️ a la izq.'}`;
+      debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
     }
 
     // GPS
@@ -454,21 +507,16 @@
       permissionModal.style.display = 'none';
       appIniciada = true;
 
-      // 1. Si la preevaluación ya determinó baja precisión, mostramos el modal inmediatamente
+      // Si al pulsar el botón la precisión ya se sabe que es baja, abrimos el modal
       if (precisionState === 'low') {
         accuracyStatusTag.textContent = "Precisión: Baja";
         accuracyStatusTag.className = "accuracy-low";
         calibrationModal.style.display = "flex";
-      } else if (precisionState === 'high') {
-        // Si ya era alta, damos por finalizada la comprobación
-        precisionFinalizada = true;
       }
 
-      // 2. Iniciar hardware (GPS y cámara)
       initGPS();
       await startCamera();
 
-      // 3. Suscripción oficial de orientación (requerido para iOS 13+)
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const res = await DeviceOrientationEvent.requestPermission();
