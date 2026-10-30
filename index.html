@@ -11,17 +11,18 @@
   <!-- Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal Inicial de Entrada / Permisos: "Cuenca Finder" con SVG de fondo -->
+  <!-- Modal Inicial de Entrada / Permisos: Logo y Título ENCIMA del div -->
   <div id="permission-modal" class="modal-overlay">
-    <div class="modal-card landing-card">
-      
-      <!-- Contenedor del título con el SVG de las Casas Colgadas de fondo -->
-      <div class="brand-hero-container">
-        <div class="brand-bg-silhouette"></div>
-        <div class="brand-badge-pill">AR &amp; Brújula GPS</div>
-        <h1 class="brand-title">Cuenca<br><span class="brand-title-accent">Finder</span></h1>
-      </div>
+    
+    <!-- Bloque de Identidad de Marca situado ENCIMA de la tarjeta -->
+    <div class="brand-hero-standalone">
+      <div class="brand-bg-silhouette"></div>
+      <div class="brand-badge-pill">AR &amp; Brújula GPS</div>
+      <h1 class="brand-title">Cuenca<br><span class="brand-title-accent">Finder</span></h1>
+    </div>
 
+    <!-- Tarjeta con la descripción y el botón de acción -->
+    <div class="modal-card landing-card">
       <p class="landing-description">
         Coloca el móvil plano sobre la mano para la brújula, o levántalo frente a ti para buscar Cuenca con la cámara.
       </p>
@@ -486,7 +487,6 @@
 
     // BOTÓN "COMENZAR EXPERIENCIA" (PANTALLA COMPLETA + PERMISOS)
     startBtn.addEventListener('click', async () => {
-      // Intentar pasar a pantalla completa en el gesto táctil del usuario
       requestAppFullscreen();
 
       permissionModal.style.display = 'none';
