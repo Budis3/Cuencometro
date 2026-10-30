@@ -17,7 +17,7 @@ let wasAlignedLastFrame = false;
 // VARIABLES DEL FILTRO PASO BAJO (VECTORIAL)
 let smoothedSin = 0;
 let smoothedCos = 1;
-const SMOOTHING_FACTOR = 0.18; // Entre 0.1 (muy suave/firme) y 0.3 (más reactivo)
+const SMOOTHING_FACTOR = 0.18;
 let isFirstHeadingSample = true;
 
 // Detección de plataforma
@@ -111,7 +111,7 @@ function setupInstructionsText() {
 }
 setupInstructionsText();
 
-// Evaluación de precisión magnética con persistencia
+// EVALUACIÓN DE PRECISIÓN COMPATIBLE CON IOS Y ANDROID
 function evaluarPrecisionReal(event, rawHeading) {
   if (precisionFinalizada) return;
 
@@ -120,8 +120,13 @@ function evaluarPrecisionReal(event, rawHeading) {
 
   if (isIOS) {
     const acc = event.webkitCompassAccuracy;
-    if (typeof acc !== 'undefined' && acc !== null) {
-      if (acc >= 0 && acc <= 25) {
+    // Si iOS da un valor explícito de precisión fiable
+    if (typeof acc !== 'undefined' && acc !== null && acc >= 0 && acc <= 35) {
+      isAccurate = true;
+    } else if (rawHeading !== null && typeof event.webkitCompassHeading !== 'undefined') {
+      // En iOS Safari, cuando acc es -1 pero el sensor entrega rumbo activo:
+      // tras recibir unas pocas muestras estables consideramos que el sensor está operativo
+      if (totalSamples > 8) {
         isAccurate = true;
       }
     }
@@ -168,7 +173,7 @@ function evaluarPrecisionReal(event, rawHeading) {
           precisionFinalizada = true;
           transitionToMainTimeout = null;
           actualizarVisibilidadApp();
-        }, 1400);
+        }, 1000);
       }
     }
   }
@@ -225,7 +230,7 @@ function evaluarPosturaYModo(beta, gamma) {
   actualizarVisibilidadApp();
 }
 
-// Obtener rotación nativa de la pantalla de forma segura
+// Obtener rotación nativa de la pantalla
 function getScreenAngle() {
   if (screen.orientation && typeof screen.orientation.angle !== 'undefined') {
     return screen.orientation.angle;
@@ -236,15 +241,13 @@ function getScreenAngle() {
   return 0;
 }
 
-// LECTURA DE SENSORES CON FILTRO PASO BAJO VECTORIAL CIRCULAR
+// Lectura de sensores con filtro paso bajo vectorial
 function handleOrientation(e) {
   let rawDeg = null;
 
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
-    // iOS Safari entrega directamente el rumbo magnético respecto al chasis
     rawDeg = e.webkitCompassHeading;
   } else if (e.alpha !== null) {
-    // Android / Estándar W3C
     rawDeg = (360 - e.alpha) % 360;
   }
 
@@ -252,10 +255,8 @@ function handleOrientation(e) {
 
   if (rawDeg !== null) {
     const screenAngle = getScreenAngle();
-    // En orientación apaisada compensamos con el ángulo de la pantalla
     let targetHeading = (rawDeg + screenAngle + 360) % 360;
 
-    // Conversión a vector (X, Y) para eliminar el salto brusco de 0° a 360°
     const targetRad = (targetHeading * Math.PI) / 180;
     const targetSin = Math.sin(targetRad);
     const targetCos = Math.cos(targetRad);
@@ -265,12 +266,10 @@ function handleOrientation(e) {
       smoothedCos = targetCos;
       isFirstHeadingSample = false;
     } else {
-      // Filtro paso bajo ponderado (LERP vectorial)
       smoothedSin = smoothedSin + SMOOTHING_FACTOR * (targetSin - smoothedSin);
       smoothedCos = smoothedCos + SMOOTHING_FACTOR * (targetCos - smoothedCos);
     }
 
-    // Reconstrucción del ángulo filtrado
     let computedHeading = Math.atan2(smoothedSin, smoothedCos) * (180 / Math.PI);
     currentHeading = (computedHeading + 360) % 360;
   }
@@ -303,7 +302,7 @@ function buildCompassTrack() {
 }
 buildCompassTrack();
 
-// Rumbo geográfico hacia Cuenca
+// Rumbo geográfico
 function calculateBearing(lat1, lon1, lat2, lon2) {
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
@@ -338,7 +337,7 @@ async function startCamera() {
   }
 }
 
-// Actualización visual en pantalla
+// Renderizado de interfaz
 function actualizarVista() {
   compassDial.style.transform = `rotate(${-currentHeading}deg)`;
   const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
@@ -426,6 +425,7 @@ startBtn.addEventListener('click', async () => {
   appIniciada = true;
   actualizarVisibilidadApp();
 
+  // Si no estaba pre-calibrada, muestra el modal de calibración
   if (!precisionFinalizada && precisionState === 'low') {
     accuracyStatusTag.textContent = "Precisión: Baja";
     accuracyStatusTag.className = "accuracy-low";
@@ -471,7 +471,7 @@ toggleReticleBtn.addEventListener('click', () => {
   }
 });
 
-// Reseteo rápido de amortiguación al rotar la pantalla
+// Reseteo al girar la pantalla
 window.addEventListener('orientationchange', () => {
   isFirstHeadingSample = true;
   actualizarVista();
