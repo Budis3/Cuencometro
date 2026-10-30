@@ -69,7 +69,7 @@ body {
   overflow: visible;
 }
 
-/* Silueta monumental de las Casas Colgadas detrás del título (Tono original) */
+/* Silueta monumental de las Casas Colgadas detrás del título */
 .brand-bg-silhouette {
   position: absolute;
   top: 48%;
@@ -108,11 +108,11 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* Título Cuenca Finder agrandado un 60% */
+/* Título Cuenca Finder agrandado un 60% (de 2.35rem a 3.75rem) */
 .brand-title {
   position: relative;
   z-index: 2;
-  font-size: 3.75rem;
+  font-size: 3.75rem; /* +60% respecto a 2.35rem */
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.04em;
