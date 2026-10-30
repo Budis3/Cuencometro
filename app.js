@@ -14,6 +14,12 @@ const TOLERANCE_DEG = 12;
 const PX_PER_DEG = 4;
 let wasAlignedLastFrame = false;
 
+// VARIABLES DEL FILTRO PASO BAJO (VECTORIAL)
+let smoothedSin = 0;
+let smoothedCos = 1;
+const SMOOTHING_FACTOR = 0.18; // Entre 0.1 (muy suave/firme) y 0.3 (más reactivo)
+let isFirstHeadingSample = true;
+
 // Detección de plataforma
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -193,7 +199,6 @@ function evaluarPosturaYModo(beta, gamma) {
   const bRad = ((beta || 0) * Math.PI) / 180;
   const gRad = ((gamma || 0) * Math.PI) / 180;
 
-  // Inclinación angular respecto al plano del suelo
   const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
   const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
@@ -220,32 +225,54 @@ function evaluarPosturaYModo(beta, gamma) {
   actualizarVisibilidadApp();
 }
 
-// Obtener la rotación visual actual de la pantalla (0°, 90°, 180°, 270°)
+// Obtener rotación nativa de la pantalla de forma segura
 function getScreenAngle() {
   if (screen.orientation && typeof screen.orientation.angle !== 'undefined') {
     return screen.orientation.angle;
   }
   if (typeof window.orientation !== 'undefined') {
-    return window.orientation;
+    return Number(window.orientation) || 0;
   }
   return 0;
 }
 
-// Lectura de orientación con compensación de giro de pantalla en Landscape
+// LECTURA DE SENSORES CON FILTRO PASO BAJO VECTORIAL CIRCULAR
 function handleOrientation(e) {
-  let rawHeading = null;
+  let rawDeg = null;
+
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
-    rawHeading = e.webkitCompassHeading;
+    // iOS Safari entrega directamente el rumbo magnético respecto al chasis
+    rawDeg = e.webkitCompassHeading;
   } else if (e.alpha !== null) {
-    rawHeading = (360 - e.alpha) % 360;
+    // Android / Estándar W3C
+    rawDeg = (360 - e.alpha) % 360;
   }
 
-  evaluarPrecisionReal(e, rawHeading);
+  evaluarPrecisionReal(e, rawDeg);
 
-  if (rawHeading !== null) {
+  if (rawDeg !== null) {
     const screenAngle = getScreenAngle();
-    // Sumamos la rotación de pantalla para que la línea de mira coincida siempre con el visor
-    currentHeading = (rawHeading + screenAngle + 360) % 360;
+    // En orientación apaisada compensamos con el ángulo de la pantalla
+    let targetHeading = (rawDeg + screenAngle + 360) % 360;
+
+    // Conversión a vector (X, Y) para eliminar el salto brusco de 0° a 360°
+    const targetRad = (targetHeading * Math.PI) / 180;
+    const targetSin = Math.sin(targetRad);
+    const targetCos = Math.cos(targetRad);
+
+    if (isFirstHeadingSample) {
+      smoothedSin = targetSin;
+      smoothedCos = targetCos;
+      isFirstHeadingSample = false;
+    } else {
+      // Filtro paso bajo ponderado (LERP vectorial)
+      smoothedSin = smoothedSin + SMOOTHING_FACTOR * (targetSin - smoothedSin);
+      smoothedCos = smoothedCos + SMOOTHING_FACTOR * (targetCos - smoothedCos);
+    }
+
+    // Reconstrucción del ángulo filtrado
+    let computedHeading = Math.atan2(smoothedSin, smoothedCos) * (180 / Math.PI);
+    currentHeading = (computedHeading + 360) % 360;
   }
 
   const beta = e.beta || 0;
@@ -276,7 +303,7 @@ function buildCompassTrack() {
 }
 buildCompassTrack();
 
-// Rumbo geográfico
+// Rumbo geográfico hacia Cuenca
 function calculateBearing(lat1, lon1, lat2, lon2) {
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
@@ -311,7 +338,7 @@ async function startCamera() {
   }
 }
 
-// Actualización visual
+// Actualización visual en pantalla
 function actualizarVista() {
   compassDial.style.transform = `rotate(${-currentHeading}deg)`;
   const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
@@ -366,7 +393,7 @@ function actualizarVista() {
   debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
 }
 
-// Geolocalización
+// Geolocalización GPS
 function initGPS() {
   if (!navigator.geolocation) return;
 
@@ -444,7 +471,8 @@ toggleReticleBtn.addEventListener('click', () => {
   }
 });
 
-// Listener para actualizar el rumbo en el instante en que el usuario rota el móvil
+// Reseteo rápido de amortiguación al rotar la pantalla
 window.addEventListener('orientationchange', () => {
+  isFirstHeadingSample = true;
   actualizarVista();
 });
