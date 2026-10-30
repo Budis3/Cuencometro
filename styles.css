@@ -2,7 +2,7 @@
   --bg: #0b0f19;
   --card-bg: rgba(18, 24, 38, 0.88);
   --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.5);
+  --accent-glow: rgba(59, 130, 246, 0.45);
   --danger: #ef4444;
   --success: #10b981;
   --text: #f3f4f6;
@@ -55,10 +55,85 @@ body {
   text-align: center;
 }
 
+/* BLOQUE DE MARCA STANDALONE: SITUADO ENCIMA DE LA TARJETA */
+.brand-hero-standalone {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  overflow: visible;
+}
+
+/* Silueta monumental de las Casas Colgadas detrás del título */
+.brand-bg-silhouette {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 280px;
+  background-color: var(--accent);
+  -webkit-mask-image: url('casas-colgadas.svg');
+  mask-image: url('casas-colgadas.svg');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  opacity: 0.16;
+  filter: drop-shadow(0 0 25px var(--accent-glow));
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Pastilla superior del modo */
+.brand-badge-pill {
+  position: relative;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  margin-bottom: 0.5rem;
+}
+
+/* Título Cuenca Finder agrandado un 60% (de 2.35rem a 3.75rem) */
+.brand-title {
+  position: relative;
+  z-index: 2;
+  font-size: 3.75rem; /* +60% respecto a 2.35rem */
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.95), 0 0 20px rgba(59, 130, 246, 0.45);
+  margin: 0;
+  text-align: center;
+}
+
+.brand-title-accent {
+  background: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+/* TARJETA DE BIENVENIDA INFERIOR */
 .modal-card {
   background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 28px;
   padding: 2.2rem 1.6rem;
@@ -70,88 +145,15 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* ESTILOS DE LA PANTALLA LANDING: CUENCA FINDER */
 .landing-card {
-  padding: 2.4rem 1.6rem 2rem 1.6rem;
-}
-
-/* Bloque Hero para el Título y el SVG de fondo */
-.brand-hero-container {
-  position: relative;
-  width: 100%;
-  min-height: 190px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.2rem;
-  overflow: visible;
-}
-
-/* Silueta de las Casas Colgadas como marca de agua monumental detrás del texto */
-.brand-bg-silhouette {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 170px;
-  height: 215px;
-  background-color: var(--accent);
-  -webkit-mask-image: url('casas-colgadas.svg');
-  mask-image: url('casas-colgadas.svg');
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  opacity: 0.18;
-  filter: drop-shadow(0 0 20px var(--accent-glow));
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Pequeña pastilla encima del título */
-.brand-badge-pill {
-  position: relative;
-  z-index: 2;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.16);
-  border: 1px solid rgba(147, 197, 253, 0.25);
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  margin-bottom: 0.4rem;
-}
-
-/* Tipografía de Cuenca Finder */
-.brand-title {
-  position: relative;
-  z-index: 2;
-  font-size: 2.35rem;
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  color: #ffffff;
-  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.9), 0 0 12px rgba(59, 130, 246, 0.35);
-  margin: 0;
-}
-
-.brand-title-accent {
-  background: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
+  padding: 1.8rem 1.6rem 1.8rem 1.6rem;
 }
 
 .landing-description {
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   line-height: 1.45;
   color: var(--text-muted);
-  margin-bottom: 1.8rem;
+  margin-bottom: 1.6rem;
   text-align: center;
 }
 
