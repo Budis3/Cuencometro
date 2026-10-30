@@ -1,4 +1,4 @@
-:root { 
+:root {
   --bg: #0b0f19;
   --card-bg: rgba(18, 24, 38, 0.88);
   --accent: #3b82f6;
@@ -41,7 +41,7 @@ body {
   display: none;
 }
 
-/* MODAL DE BIENVENIDA (OPACIDAD COMPLETA) */
+/* MODALES BASE CON ANIMACIÓN DE ENTRADA SUAVE */
 .modal-overlay {
   position: absolute;
   inset: 0;
@@ -53,9 +53,21 @@ body {
   align-items: center;
   padding: 1.5rem;
   text-align: center;
+  animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* BLOQUE DE MARCA STANDALONE: SITUADO ENCIMA DE LA TARJETA */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(14px);
+  }
+}
+
+/* BLOQUE DE MARCA STANDALONE */
 .brand-hero-standalone {
   position: relative;
   width: 100%;
@@ -67,9 +79,21 @@ body {
   justify-content: center;
   margin-bottom: 1.5rem;
   overflow: visible;
+  animation: heroEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Silueta monumental de las Casas Colgadas detrás del título */
+@keyframes heroEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Silueta con efecto de pulso respiratorio */
 .brand-bg-silhouette {
   position: absolute;
   top: 48%;
@@ -90,9 +114,22 @@ body {
   filter: drop-shadow(0 0 25px var(--accent-glow));
   pointer-events: none;
   z-index: 1;
+  animation: silhouetteBreathing 4s ease-in-out infinite alternate;
 }
 
-/* Pastilla superior del modo */
+@keyframes silhouetteBreathing {
+  0% {
+    opacity: 0.14;
+    transform: translate(-50%, -50%) scale(0.98);
+    filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3));
+  }
+  100% {
+    opacity: 0.22;
+    transform: translate(-50%, -50%) scale(1.03);
+    filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.6));
+  }
+}
+
 .brand-badge-pill {
   position: relative;
   z-index: 2;
@@ -108,11 +145,10 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* Título Cuenca Finder agrandado un 60% (de 2.35rem a 3.75rem) */
 .brand-title {
   position: relative;
   z-index: 2;
-  font-size: 3.75rem; /* +60% respecto a 2.35rem */
+  font-size: 3.75rem;
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.04em;
@@ -129,7 +165,7 @@ body {
   display: inline-block;
 }
 
-/* TARJETA DE BIENVENIDA INFERIOR */
+/* TARJETA INFERIOR */
 .modal-card {
   background: rgba(30, 41, 59, 0.85);
   backdrop-filter: blur(14px);
@@ -143,10 +179,22 @@ body {
   flex-direction: column;
   align-items: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: cardEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .landing-card {
-  padding: 1.8rem 1.6rem 1.8rem 1.6rem;
+  padding: 1.8rem 1.6rem;
 }
 
 .landing-description {
@@ -157,6 +205,47 @@ body {
   text-align: center;
 }
 
+/* BOTÓN PRINCIPAL CON EFECTO SHINE INTERACTIVO */
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  padding: 0.9rem 1.8rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.25s ease, filter 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: rotate(25deg);
+  animation: btnShine 4s infinite ease-in-out;
+}
+
+@keyframes btnShine {
+  0%, 70% { left: -60%; }
+  100% { left: 140%; }
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
+}
+
 .btn-landing {
   width: 100%;
   justify-content: center;
@@ -164,7 +253,7 @@ body {
   padding: 1rem 1.6rem;
 }
 
-/* MODAL DE CALIBRACIÓN: TRANSLÚCIDO CON DEGRADADO RADIAL */
+/* MODAL DE CALIBRACIÓN TRANSLÚCIDO */
 .modal-calibration-overlay {
   background: radial-gradient(circle at center, rgba(30, 41, 59, 0.72) 0%, rgba(11, 15, 25, 0.78) 100%);
   backdrop-filter: blur(10px);
@@ -182,6 +271,12 @@ body {
 .icon-cuenca {
   font-size: 2.8rem;
   margin-bottom: 0.6rem;
+  animation: floatIcon 3s ease-in-out infinite;
+}
+
+@keyframes floatIcon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .modal-card h1 {
@@ -202,7 +297,6 @@ body {
   color: #fff;
 }
 
-/* LISTAS DE INSTRUCCIONES ESPECÍFICAS DE CALIBRACIÓN */
 .calibration-instructions-text {
   text-align: left;
   width: 100%;
@@ -233,7 +327,7 @@ body {
   font-style: normal;
 }
 
-/* CAJA Y ETIQUETA DINÁMICA DE PRECISIÓN */
+/* ETIQUETA DINÁMICA DE PRECISIÓN */
 .accuracy-indicator-box {
   margin-top: 0.5rem;
   display: flex;
@@ -249,43 +343,35 @@ body {
   padding: 0.5rem 1.3rem;
   border-radius: 9999px;
   background: rgba(0, 0, 0, 0.55);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #accuracy-status-tag.accuracy-low {
   color: var(--danger);
   border: 1.5px solid rgba(239, 68, 68, 0.7);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+  animation: pulseAlert 1.8s infinite;
+}
+
+@keyframes pulseAlert {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
 }
 
 #accuracy-status-tag.accuracy-high {
   color: var(--success);
   border: 1.5px solid rgba(16, 185, 129, 0.9);
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.9), inset 0 0 10px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.9), inset 0 0 10px rgba(16, 185, 129, 0.4);
   text-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
+  animation: highSuccessGlow 1.5s infinite alternate;
 }
 
-.btn-primary {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 0.9rem 1.8rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 9999px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-  transition: all 0.2s;
+@keyframes highSuccessGlow {
+  0% { box-shadow: 0 0 14px rgba(16, 185, 129, 0.7); }
+  100% { box-shadow: 0 0 26px rgba(16, 185, 129, 1); }
 }
 
-.btn-primary:active {
-  transform: scale(0.96);
-}
-
-/* CONTENEDOR PRINCIPAL */
+/* CONTENEDOR GENERAL */
 #app-container {
   position: relative;
   width: 100%;
@@ -296,7 +382,7 @@ body {
   pointer-events: none;
 }
 
-/* 1. MODO BRÚJULA (PLANO EN LA MANO) */
+/* 1. MODO BRÚJULA */
 #compass-mode {
   flex: 1;
   display: flex;
@@ -315,12 +401,13 @@ body {
   letter-spacing: 0.06em;
   color: var(--text-muted);
   margin-bottom: 0.8rem;
-  transition: color 0.2s;
+  transition: color 0.25s ease, transform 0.25s ease;
 }
 
 .target-status-banner.aligned {
   color: var(--success);
-  text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  text-shadow: 0 0 14px rgba(16, 185, 129, 0.7);
+  transform: scale(1.06);
 }
 
 .fixed-top-triangle {
@@ -330,12 +417,13 @@ body {
   border-right: 12px solid transparent;
   border-top: 22px solid rgba(255, 255, 255, 0.35);
   margin-bottom: 0.6rem;
-  transition: border-top-color 0.2s, filter 0.2s;
+  transition: border-top-color 0.2s, filter 0.2s, transform 0.2s;
 }
 
 .fixed-top-triangle.aligned {
   border-top-color: var(--success);
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9));
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.9));
+  transform: translateY(2px) scale(1.1);
 }
 
 .compass-container {
@@ -355,6 +443,7 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.15);
   background: radial-gradient(circle, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
   box-shadow: 0 0 35px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s ease;
 }
 
 .compass-dial {
@@ -422,7 +511,7 @@ body {
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
   border-bottom: 90px solid #ef4444;
-  transition: border-bottom-color 0.2s;
+  transition: border-bottom-color 0.25s, filter 0.25s;
 }
 
 .needle-tail {
@@ -466,7 +555,7 @@ body {
   margin-top: 0.25rem;
 }
 
-/* 2. MODO CÁMARA (VERTICAL AL FRENTE) */
+/* 2. MODO CÁMARA */
 #ar-mode {
   flex: 1;
   display: none;
@@ -481,7 +570,8 @@ body {
   width: 92%;
   max-width: 380px;
   height: 52px;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -516,12 +606,12 @@ body {
   transform: translateX(-50%);
   z-index: 12;
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.7));
-  transition: border-top-color 0.15s, filter 0.15s;
+  transition: border-top-color 0.2s, filter 0.2s;
 }
 
 .ar-cuenca-target-pin.aligned {
   border-top-color: var(--success);
-  filter: drop-shadow(0 0 10px var(--success));
+  filter: drop-shadow(0 0 12px var(--success));
 }
 
 .ar-compass-track {
@@ -579,7 +669,7 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: MIRA EN CRUZ (88px) */
+/* RETÍCULO A: MIRA EN CRUZ CON ONDAS RADAR AL APUNTAR */
 .target-cross-circle {
   width: 88px;
   height: 88px;
@@ -590,24 +680,38 @@ body {
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 10px rgba(239, 68, 68, 0.2);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .target-cross-circle.on-target {
   border-color: var(--success);
   box-shadow: 0 0 25px rgba(16, 185, 129, 0.95), inset 0 0 15px rgba(16, 185, 129, 0.4);
+  transform: scale(1.08);
+  animation: radarEcho 1.6s infinite ease-out;
+}
+
+@keyframes radarEcho {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8), inset 0 0 10px rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 24px rgba(16, 185, 129, 0), inset 0 0 15px rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), inset 0 0 15px rgba(16, 185, 129, 0.4);
+  }
 }
 
 .cross-line {
   position: absolute;
   background-color: var(--danger);
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-  transition: background-color 0.15s, box-shadow 0.15s;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .target-cross-circle.on-target .cross-line {
   background-color: var(--success);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
 }
 
 .cross-line.top {
@@ -642,17 +746,24 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: CASAS COLGADAS */
+/* RETÍCULO B: CASAS COLGADAS CON EFECTO PULSO */
 .target-casas-glow-wrapper {
   width: 108px;
   height: 137px;
   display: block;
   filter: none;
-  transition: filter 0.15s;
+  transition: filter 0.2s ease, transform 0.2s ease;
 }
 
 .target-casas-glow-wrapper.on-target {
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.8));
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 25px rgba(16, 185, 129, 0.85));
+  transform: scale(1.08);
+  animation: casasTargetPulse 1.8s infinite alternate ease-in-out;
+}
+
+@keyframes casasTargetPulse {
+  0% { transform: scale(1.05); }
+  100% { transform: scale(1.13); }
 }
 
 .target-casas-shape {
@@ -667,14 +778,14 @@ body {
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
-  transition: background-color 0.15s;
+  transition: background-color 0.2s ease;
 }
 
 .target-casas-glow-wrapper.on-target .target-casas-shape {
   background-color: var(--success);
 }
 
-/* LETRERO DE DIRECCIÓN DINÁMICO AMPLIO */
+/* BANNER DE ESTADO AR */
 .ar-status-text {
   margin-top: 1.6rem;
   font-size: 0.95rem;
@@ -682,18 +793,22 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 0.6rem 1.6rem;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   white-space: nowrap;
   max-width: 90vw;
   text-align: center;
+  transition: border-color 0.25s, color 0.25s, box-shadow 0.25s, transform 0.2s;
 }
 
 .ar-status-text.on-target {
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: rgba(16, 185, 129, 0.6);
   color: var(--success);
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
+  transform: scale(1.05);
 }
 
 /* BOTÓN FLOTANTE INFERIOR DERECHO */
@@ -734,16 +849,16 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  transition: transform 0.15s, background-color 0.15s, border-color 0.15s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s;
 }
 
 .btn-toggle-round:active {
-  transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.18);
+  transform: scale(0.88) rotate(-15deg);
+  background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* BARRA INFERIOR DE DIAGNÓSTICO (TIPOGRAFÍA -10%: 0.68rem) */
+/* BARRA INFERIOR DE DIAGNÓSTICO */
 .bottom-info {
   pointer-events: auto;
   padding: 0.75rem 1rem;
@@ -753,6 +868,8 @@ body {
   justify-content: space-around;
   align-items: center;
   background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 20;
 }
