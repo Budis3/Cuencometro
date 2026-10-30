@@ -105,7 +105,7 @@ function setupInstructionsText() {
 }
 setupInstructionsText();
 
-// Evaluación de precisión magnética con persistencia (una vez calibrado, se bloquea)
+// Evaluación de precisión magnética con persistencia
 function evaluarPrecisionReal(event, rawHeading) {
   if (precisionFinalizada) return;
 
@@ -220,7 +220,18 @@ function evaluarPosturaYModo(beta, gamma) {
   actualizarVisibilidadApp();
 }
 
-// Lectura de orientación
+// Obtener la rotación visual actual de la pantalla (0°, 90°, 180°, 270°)
+function getScreenAngle() {
+  if (screen.orientation && typeof screen.orientation.angle !== 'undefined') {
+    return screen.orientation.angle;
+  }
+  if (typeof window.orientation !== 'undefined') {
+    return window.orientation;
+  }
+  return 0;
+}
+
+// Lectura de orientación con compensación de giro de pantalla en Landscape
 function handleOrientation(e) {
   let rawHeading = null;
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -230,8 +241,11 @@ function handleOrientation(e) {
   }
 
   evaluarPrecisionReal(e, rawHeading);
+
   if (rawHeading !== null) {
-    currentHeading = rawHeading;
+    const screenAngle = getScreenAngle();
+    // Sumamos la rotación de pantalla para que la línea de mira coincida siempre con el visor
+    currentHeading = (rawHeading + screenAngle + 360) % 360;
   }
 
   const beta = e.beta || 0;
@@ -428,4 +442,9 @@ toggleReticleBtn.addEventListener('click', () => {
     casasReticle.style.display = 'block';
     reticleIcon.textContent = "⭕";
   }
+});
+
+// Listener para actualizar el rumbo en el instante en que el usuario rota el móvil
+window.addEventListener('orientationchange', () => {
+  actualizarVista();
 });
