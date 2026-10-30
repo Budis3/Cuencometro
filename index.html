@@ -23,16 +23,16 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración: SALTA SOLO SI LA PRECISIÓN ES DEFICIENTE -->
-  <div id="calibration-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
+  <!-- Modal de Calibración Translúcido con Degradado -->
+  <div id="calibration-modal" class="modal-overlay modal-calibration-overlay" style="display: none;">
+    <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
       <h1>Calibrar Brújula</h1>
       
-      <!-- Instrucciones específicas según el sistema operativo detectado -->
+      <!-- Instrucciones según SO -->
       <div id="calibration-instructions" class="calibration-instructions-text"></div>
       
-      <!-- Etiqueta de Precisión (Baja en rojo / Alta en verde con Glow) -->
+      <!-- Etiqueta de Precisión -->
       <div class="accuracy-indicator-box">
         <span id="accuracy-status-tag" class="accuracy-low">Precisión: Baja</span>
       </div>
@@ -44,18 +44,12 @@
 
     <!-- 1. MODO BRÚJULA (PLANO EN LA MANO) -->
     <div id="compass-mode">
-      
-      <!-- Mensaje contextual superior -->
       <div class="target-status-banner" id="banner-status-text">Buscando Cuenca</div>
-
-      <!-- Triángulo Isósceles inmóvil centrado en la vertical -->
       <div class="fixed-top-triangle" id="fixed-triangle"></div>
 
-      <!-- Esfera de la brújula -->
       <div class="compass-container">
         <div class="compass-bezel"></div>
 
-        <!-- Roseta Cardinal que apunta al Norte real -->
         <div class="compass-dial" id="compass-dial">
           <div class="dial-mark north">N</div>
           <div class="dial-mark east">E</div>
@@ -63,7 +57,6 @@
           <div class="dial-mark west">O</div>
         </div>
 
-        <!-- Aguja que apunta a Cuenca -->
         <div class="cuenca-needle" id="cuenca-needle">
           <div class="needle-shape">
             <div class="needle-cuenca-head" id="needle-head"></div>
@@ -81,18 +74,14 @@
 
     <!-- 2. MODO CÁMARA (VERTICAL AL FRENTE) -->
     <div id="ar-mode">
-      
-      <!-- BRÚJULA HORIZONTAL AR CON EXTREMOS DIFUMINADOS -->
       <div class="ar-compass-ribbon-container">
         <div class="ar-center-indicator"></div>
         <div class="ar-cuenca-target-pin" id="ar-cuenca-target-pin"></div>
         <div class="ar-compass-track" id="ar-compass-track"></div>
       </div>
 
-      <!-- Contenedor central del retículo -->
       <div class="ar-reticle-container">
-        
-        <!-- Retículo A: Círculo con cruz (88px) -->
+        <!-- Retículo A: Círculo con cruz -->
         <div class="target-cross-circle" id="circle-reticle" style="display: none;">
           <div class="cross-line top"></div>
           <div class="cross-line bottom"></div>
@@ -100,7 +89,7 @@
           <div class="cross-line right"></div>
         </div>
 
-        <!-- Retículo B: SVG Casas Colgadas -->
+        <!-- Retículo B: Casas Colgadas -->
         <div class="target-casas-glow-wrapper" id="casas-reticle">
           <div class="target-casas-shape"></div>
         </div>
@@ -144,13 +133,18 @@
     const TOLERANCE_DEG = 12;
     const PX_PER_DEG = 4;
 
-    // DETECCIÓN DEL SISTEMA OPERATIVO
+    // DETECCIÓN DE PLATAFORMA
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/.test(navigator.userAgent);
 
-    // CONTROL DE ESTADO DE CALIBRACIÓN
-    let modalCalibrationActive = false;
+    // ESTADO DE PRECISIÓN Y CALIBRACIÓN
+    // 'unknown' -> antes de recibir datos
+    // 'low' -> precisión deficiente
+    // 'high' -> precisión óptima
+    let precisionState = 'unknown';
+    let appIniciada = false;
+    let precisionFinalizada = false;
     let transitionToMainTimeout = null;
 
     // Elementos DOM
@@ -184,89 +178,94 @@
     function setupInstructionsText() {
       if (isIOS) {
         calibrationInstructions.innerHTML = `
-          <p>La brújula de tu <strong>iPhone</strong> tiene interferencias o no está calibrada.</p>
+          <p>La brújula de tu <strong>iPhone</strong> detecta interferencias magnéticas.</p>
           <ol class="calibration-steps">
             <li>Mueve el iPhone dibujando un <strong>«8» amplio en el aire</strong>.</li>
             <li>Aléjate de <strong>fundas con imanes (MagSafe)</strong> o piezas metálicas.</li>
-            <li>Si no se soluciona, ve a: <em>Ajustes &gt; Privacidad &gt; Localización &gt; Servicios del sistema</em> y verifica que <strong>Calibración de la brújula</strong> esté activada.</li>
+            <li>Si no sube la precisión, entra en: <em>Ajustes &gt; Privacidad &gt; Localización &gt; Servicios del sistema</em> y verifica que <strong>Calibración de la brújula</strong> esté activada.</li>
           </ol>
         `;
       } else if (isAndroid) {
         calibrationInstructions.innerHTML = `
-          <p>El sensor magnético de tu <strong>Android</strong> detecta baja precisión.</p>
+          <p>El sensor magnético de tu <strong>Android</strong> requiere calibración.</p>
           <ol class="calibration-steps">
-            <li>Sujeta el teléfono y realiza un movimiento en forma de <strong>«8» en el aire</strong> inclinándolo en las 3 dimensiones.</li>
-            <li>Aléjate de ordenadores, cables de alta tensión o carcasas con imán.</li>
-            <li>Si persiste, abre <strong>Google Maps</strong>, toca tu punto azul de ubicación y pulsa en <em>«Calibrar brújula»</em>.</li>
+            <li>Mueve el teléfono en el aire trazando la forma de un <strong>«8» amplio</strong>, girando la muñeca sobre los 3 ejes.</li>
+            <li>Aléjate de ordenadores, fuentes de corriente o carcasas imantadas.</li>
+            <li>Si persiste, abre <strong>Google Maps</strong>, toca tu punto azul de ubicación y pulsa en <em>«Calibrar»</em>.</li>
           </ol>
         `;
       } else {
         calibrationInstructions.innerHTML = `
-          <p>Mueve tu dispositivo formando un <strong>«8» continuo en el aire</strong> para calibrar los sensores magnéticos.</p>
+          <p>Mueve el dispositivo formando un <strong>«8» en el aire</strong> para calibrar los sensores magnéticos.</p>
         `;
       }
     }
     setupInstructionsText();
 
-    // MOSTRAR ALERTA SI LA PRECISIÓN ES BAJA
-    function activarAlertaBajaPrecision() {
-      if (modalCalibrationActive) return; // Ya está visible
-      modalCalibrationActive = true;
+    // COMPROBACIÓN CONTINUA DE PRECISIÓN
+    function evaluarPrecisionSensor(event) {
+      if (precisionFinalizada) return;
 
-      // Si había un temporizador de cierre en marcha, se anula porque volvió a caer la precisión
-      if (transitionToMainTimeout) {
-        clearTimeout(transitionToMainTimeout);
-        transitionToMainTimeout = null;
-      }
-
-      accuracyStatusTag.textContent = "Precisión: Baja";
-      accuracyStatusTag.className = "accuracy-low";
-      calibrationModal.style.display = "flex";
-    }
-
-    // GESTIONAR RESOLUCIÓN DE ALTA PRECISIÓN
-    function registrarAltaPrecision() {
-      // Si el modal de baja precisión no está en pantalla, no hacemos nada
-      if (!modalCalibrationActive) return;
-
-      // Actualizar cartel a Precisión: Alta en verde con Glow
-      accuracyStatusTag.textContent = "Precisión: Alta";
-      accuracyStatusTag.className = "accuracy-high";
-
-      // Iniciar el temporizador de 2 segundos para dar tiempo a leerlo y luego volver
-      if (!transitionToMainTimeout) {
-        transitionToMainTimeout = setTimeout(() => {
-          calibrationModal.style.display = "none";
-          modalCalibrationActive = false;
-          transitionToMainTimeout = null;
-        }, 2000);
-      }
-    }
-
-    // EVALUACIÓN REAL DE PRECISIÓN DE LA BRÚJULA
-    function evaluarPrecision(event) {
       if (isIOS) {
-        // webkitCompassAccuracy: margen de error en grados.
-        // -1 = Descalibrado. > 25 = Precisión baja / deficiente.
         const accuracy = event.webkitCompassAccuracy;
         if (typeof accuracy !== "undefined") {
-          if (accuracy < 0 || accuracy > 25) {
-            activarAlertaBajaPrecision();
+          // -1 = Descalibrado. > 20 = Margen de error alto.
+          if (accuracy < 0 || accuracy > 20) {
+            precisionState = 'low';
           } else if (accuracy <= 15) {
-            registrarAltaPrecision();
+            precisionState = 'high';
           }
         }
       } else {
-        // En Android, los navegadores no reportan webkitCompassAccuracy.
-        // El estándar W3C define event.absolute. Si absolute es false, el rumbo no está anclado al Norte magnético.
         if (typeof event.absolute !== "undefined" && event.absolute === false) {
-          activarAlertaBajaPrecision();
+          precisionState = 'low';
         } else if (event.alpha !== null) {
-          // Si el sensor emite coordenadas absolutas válidas
-          registrarAltaPrecision();
+          precisionState = 'high';
+        }
+      }
+
+      // Si el usuario ya pulsó "Comenzar experiencia", gestionamos la visibilidad del modal
+      if (appIniciada) {
+        if (precisionState === 'low') {
+          if (transitionToMainTimeout) {
+            clearTimeout(transitionToMainTimeout);
+            transitionToMainTimeout = null;
+          }
+          accuracyStatusTag.textContent = "Precisión: Baja";
+          accuracyStatusTag.className = "accuracy-low";
+          calibrationModal.style.display = "flex";
+        } else if (precisionState === 'high') {
+          // Si el modal nunca estuvo visible (ya era alta desde el inicio), finalizamos de inmediato
+          if (calibrationModal.style.display === "none") {
+            precisionFinalizada = true;
+            return;
+          }
+
+          // Si el modal estaba visible, cambiamos a verde con Glow y esperamos 2 segundos
+          accuracyStatusTag.textContent = "Precisión: Alta";
+          accuracyStatusTag.className = "accuracy-high";
+
+          if (!transitionToMainTimeout) {
+            transitionToMainTimeout = setTimeout(() => {
+              calibrationModal.style.display = "none";
+              precisionFinalizada = true; // No se vuelve a comprobar
+              transitionToMainTimeout = null;
+            }, 2000);
+          }
         }
       }
     }
+
+    // ARRANQUE PASIVO DE LA COMPROBACIÓN NADA MÁS CARGAR LA PÁGINA
+    function iniciarEvaluacionPasiva() {
+      // En Android y PC los sensores se pueden leer de inmediato
+      if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', evaluarPrecisionSensor, true);
+      } else if ('ondeviceorientation' in window) {
+        window.addEventListener('deviceorientation', evaluarPrecisionSensor, true);
+      }
+    }
+    iniciarEvaluacionPasiva();
 
     // CONSTRUIR CINTA AR
     function buildCompassTrack() {
@@ -327,10 +326,12 @@
       }
     }
 
-    // EVENTO DE ORIENTACIÓN
+    // ORIENTACIÓN (LÓGICA PRINCIPAL DE LA APP)
     function handleOrientation(e) {
-      // 1. Evaluar si la precisión es baja para activar la alerta
-      evaluarPrecision(e);
+      // 1. Evaluar precisión si aún no se ha dado el visto bueno definitivo
+      if (!precisionFinalizada) {
+        evaluarPrecisionSensor(e);
+      }
 
       // 2. Obtener rumbo
       let rawHeading = null;
@@ -448,12 +449,26 @@
       );
     }
 
-    // BOTÓN DE COMIENZO
+    // BOTÓN "COMENZAR EXPERIENCIA"
     startBtn.addEventListener('click', async () => {
       permissionModal.style.display = 'none';
+      appIniciada = true;
+
+      // 1. Si la preevaluación ya determinó baja precisión, mostramos el modal inmediatamente
+      if (precisionState === 'low') {
+        accuracyStatusTag.textContent = "Precisión: Baja";
+        accuracyStatusTag.className = "accuracy-low";
+        calibrationModal.style.display = "flex";
+      } else if (precisionState === 'high') {
+        // Si ya era alta, damos por finalizada la comprobación
+        precisionFinalizada = true;
+      }
+
+      // 2. Iniciar hardware (GPS y cámara)
       initGPS();
       await startCamera();
 
+      // 3. Suscripción oficial de orientación (requerido para iOS 13+)
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const res = await DeviceOrientationEvent.requestPermission();
