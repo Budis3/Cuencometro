@@ -68,7 +68,7 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* MODAL DE CALIBRACIÓN: MANTIENE EL DEGRADADO PERO CON TRANSLUCIDEZ */
+/* MODAL DE CALIBRACIÓN: TRANSLÚCIDO CON DEGRADADO RADIAL */
 .modal-calibration-overlay {
   background: radial-gradient(circle at center, rgba(30, 41, 59, 0.72) 0%, rgba(11, 15, 25, 0.78) 100%);
   backdrop-filter: blur(10px);
@@ -647,11 +647,11 @@ body {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* BARRA INFERIOR DE DIAGNÓSTICO */
+/* BARRA INFERIOR DE DIAGNÓSTICO (TIPOGRAFÍA -10%: 0.68rem) */
 .bottom-info {
   pointer-events: auto;
   padding: 0.75rem 1rem;
-  font-size: 0.75rem;
+  font-size: 0.68rem; /* Reducido un 10% respecto a 0.75rem */
   color: rgba(255, 255, 255, 0.75);
   display: flex;
   justify-content: space-around;
