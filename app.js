@@ -19,7 +19,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/.test(navigator.userAgent);
 
-// Control de precisión y filtrado
+// Control de calibración y precisión
 let precisionState = 'low';
 let appIniciada = false;
 let precisionFinalizada = false;
@@ -33,7 +33,6 @@ let totalSamples = 0;
 const appContainer = document.getElementById('app-container');
 const permissionModal = document.getElementById('permission-modal');
 const calibrationModal = document.getElementById('calibration-modal');
-const arOrientationModal = document.getElementById('ar-orientation-modal');
 const calibrationInstructions = document.getElementById('calibration-instructions');
 const accuracyStatusTag = document.getElementById('accuracy-status-tag');
 const startBtn = document.getElementById('start-btn');
@@ -58,13 +57,12 @@ const debugHeading = document.getElementById('debug-heading');
 const debugCuenca = document.getElementById('debug-cuenca');
 const debugDiff = document.getElementById('debug-diff');
 
-// Control centralizado de visibilidad (Oculta la brújula si hay algún modal visible)
+// Control de visibilidad
 function actualizarVisibilidadApp() {
   const modalInicioVisible = permissionModal.style.display !== 'none';
   const modalCalibracionVisible = calibrationModal.style.display !== 'none';
-  const modalOrientacionVisible = arOrientationModal.style.display !== 'none';
 
-  if (!appIniciada || modalInicioVisible || modalCalibracionVisible || modalOrientacionVisible) {
+  if (!appIniciada || modalInicioVisible || modalCalibracionVisible) {
     appContainer.classList.add('app-hidden');
   } else {
     appContainer.classList.remove('app-hidden');
@@ -79,7 +77,7 @@ function requestAppFullscreen() {
   else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
 }
 
-// Textos de calibración detallados según sistema
+// Instrucciones según sistema operativo
 function setupInstructionsText() {
   if (isIOS) {
     calibrationInstructions.innerHTML = `
@@ -107,7 +105,7 @@ function setupInstructionsText() {
 }
 setupInstructionsText();
 
-// Evaluación de precisión magnética con persistencia
+// Evaluación de precisión magnética con persistencia (una vez calibrado, se bloquea)
 function evaluarPrecisionReal(event, rawHeading) {
   if (precisionFinalizada) return;
 
@@ -170,7 +168,7 @@ function evaluarPrecisionReal(event, rawHeading) {
   }
 }
 
-// Evaluación pasiva previa al clic
+// Evaluación pasiva previa al inicio
 function iniciarEvaluacionPasiva() {
   const handlerPasivo = (e) => {
     let h = null;
@@ -190,19 +188,15 @@ function iniciarEvaluacionPasiva() {
 }
 iniciarEvaluacionPasiva();
 
-// Postura: Plano (Brújula) vs AR (Vertical / Apaisado)
+// Postura física: Plano respecto al suelo (< 25°) = Brújula | Levantado (>= 25°) = AR
 function evaluarPosturaYModo(beta, gamma) {
-  const b = beta || 0;
-  const g = gamma || 0;
+  const bRad = ((beta || 0) * Math.PI) / 180;
+  const gRad = ((gamma || 0) * Math.PI) / 180;
 
-  const bRad = (b * Math.PI) / 180;
-  const gRad = (g * Math.PI) / 180;
-
-  // Inclinación respecto al suelo horizontal (0° = plano sobre la mesa, 90° = vertical frente a los ojos)
+  // Inclinación angular respecto al plano del suelo
   const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
   const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
-  // MODO BRÚJULA: Plano en la palma (< 25° respecto al suelo)
   const esPlano = inclinacionSuelo < 25;
 
   if (esPlano) {
@@ -213,11 +207,7 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
-    // En plano JAMÁS se muestra el aviso de apaisado
-    arOrientationModal.style.display = "none";
-
   } else {
-    // MODO AR (Levantado >= 25°)
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -225,27 +215,12 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "block";
       reticleToggleWrapper.style.display = "flex";
     }
-
-    // DISCRIMINACIÓN DE APAISADO:
-    // Solo está apaisado si el teléfono está tumbado sobre su costado largo:
-    // 1. |gamma| es muy alto (> 65°)
-    // 2. |beta| es bajo (< 35°) porque la inclinación principal está en los lados, no en el eje vertical
-    const absB = Math.abs(b);
-    const absG = Math.abs(g);
-
-    const estaApaisado = (absG > 65 && absB < 35);
-
-    if (estaApaisado) {
-      arOrientationModal.style.display = "flex";
-    } else {
-      arOrientationModal.style.display = "none";
-    }
   }
 
   actualizarVisibilidadApp();
 }
 
-// Lectura de sensores
+// Lectura de orientación
 function handleOrientation(e) {
   let rawHeading = null;
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -322,7 +297,7 @@ async function startCamera() {
   }
 }
 
-// Renderizado de UI
+// Actualización visual
 function actualizarVista() {
   compassDial.style.transform = `rotate(${-currentHeading}deg)`;
   const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
