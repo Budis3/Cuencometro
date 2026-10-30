@@ -198,12 +198,12 @@ function evaluarPosturaYModo(beta, gamma) {
   const bRad = (b * Math.PI) / 180;
   const gRad = (g * Math.PI) / 180;
 
-  // Inclinación respecto al plano horizontal del suelo
+  // Inclinación respecto al suelo horizontal (0° = plano sobre la mesa, 90° = vertical frente a los ojos)
   const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
-  const anguloElevacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
+  const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
-  // MODO BRÚJULA: Plano en la palma (< 22° respecto al suelo)
-  const esPlano = anguloElevacionSuelo < 22;
+  // MODO BRÚJULA: Plano en la palma (< 25° respecto al suelo)
+  const esPlano = inclinacionSuelo < 25;
 
   if (esPlano) {
     if (currentMode !== 'compass') {
@@ -213,11 +213,11 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
-    // En plano JAMÁS salta el aviso de apaisado
+    // En plano JAMÁS se muestra el aviso de apaisado
     arOrientationModal.style.display = "none";
 
   } else {
-    // MODO AR (Levantado >= 22°)
+    // MODO AR (Levantado >= 25°)
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -226,21 +226,14 @@ function evaluarPosturaYModo(beta, gamma) {
       reticleToggleWrapper.style.display = "flex";
     }
 
-    // DISCRIMINACIÓN APAISADO EN MODO AR
+    // DISCRIMINACIÓN DE APAISADO:
+    // Solo está apaisado si el teléfono está tumbado sobre su costado largo:
+    // 1. |gamma| es muy alto (> 65°)
+    // 2. |beta| es bajo (< 35°) porque la inclinación principal está en los lados, no en el eje vertical
     const absB = Math.abs(b);
     const absG = Math.abs(g);
 
-    let estaApaisado = false;
-
-    if (window.innerWidth > window.innerHeight) {
-      estaApaisado = true;
-    } else if (absB >= 65) {
-      // Casi vertical de pie: no salta por micro-ladeos (|gamma| debe ser > 60°)
-      estaApaisado = absG > 60;
-    } else {
-      // Inclinación media: salta si el eje horizontal domina claramente
-      estaApaisado = absG > 50 && absG > absB;
-    }
+    const estaApaisado = (absG > 65 && absB < 35);
 
     if (estaApaisado) {
       arOrientationModal.style.display = "flex";
@@ -459,13 +452,5 @@ toggleReticleBtn.addEventListener('click', () => {
     circleReticle.style.display = 'none';
     casasReticle.style.display = 'block';
     reticleIcon.textContent = "⭕";
-  }
-});
-
-window.addEventListener('resize', () => {
-  if (appIniciada) {
-    const beta = window.lastBeta || 0;
-    const gamma = window.lastGamma || 0;
-    evaluarPosturaYModo(beta, gamma);
   }
 });
