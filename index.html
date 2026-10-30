@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cuenca Finder</title>
 
-  <!-- PWA & Bloqueo Vertical Nativo -->
+  <!-- PWA & Metas -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0b0f19" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -48,6 +48,15 @@
       <div class="accuracy-indicator-box">
         <span id="accuracy-status-tag" class="accuracy-low">Precisión: Baja</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal de Aviso Exclusivo AR: Dispositivo en Horizontal/Apaisado -->
+  <div id="ar-orientation-modal" class="modal-overlay modal-opaque" style="display: none;">
+    <div class="modal-card modal-calibration-card">
+      <div class="icon-phone-tilt">📱</div>
+      <h1>Sujeta en Vertical</h1>
+      <p>Para buscar Cuenca con la cámara, por favor sostén el dispositivo en modo vertical.</p>
     </div>
   </div>
 
