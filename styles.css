@@ -40,7 +40,7 @@ body {
   display: none;
 }
 
-/* MODALES DE BIENVENIDA Y CALIBRACIÓN */
+/* MODAL DE BIENVENIDA (OPACIDAD COMPLETA) */
 .modal-overlay {
   position: absolute;
   inset: 0;
@@ -52,22 +52,35 @@ body {
   align-items: center;
   padding: 1.5rem;
   text-align: center;
-  transition: opacity 0.3s ease;
 }
 
 .modal-card {
-  background: rgba(30, 41, 59, 0.9);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
-  padding: 2rem 1.6rem;
-  max-width: 380px;
-  width: 100%;
+  padding: 2.2rem 1.6rem;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* MODAL DE CALIBRACIÓN: MANTIENE EL DEGRADADO PERO CON TRANSLUCIDEZ */
+.modal-calibration-overlay {
+  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.72) 0%, rgba(11, 15, 25, 0.78) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.modal-calibration-card {
+  background: rgba(30, 41, 59, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
 }
 
 .icon-cuenca {
@@ -143,14 +156,12 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Estado: Precisión Baja en Rojo */
 #accuracy-status-tag.accuracy-low {
   color: var(--danger);
   border: 1.5px solid rgba(239, 68, 68, 0.7);
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
-/* Estado: Precisión Alta en Verde con Glow Neón */
 #accuracy-status-tag.accuracy-high {
   color: var(--success);
   border: 1.5px solid rgba(16, 185, 129, 0.9);
@@ -216,7 +227,6 @@ body {
   text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
 }
 
-/* Triángulo isósceles inmóvil centrado */
 .fixed-top-triangle {
   width: 0;
   height: 0;
@@ -371,7 +381,6 @@ body {
   position: relative;
 }
 
-/* BRÚJULA HORIZONTAL AR FLOTANTE CON DIFUMINADO LATERAL */
 .ar-compass-ribbon-container {
   width: 92%;
   max-width: 380px;
@@ -462,7 +471,6 @@ body {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Contenedor central del retículo */
 .ar-reticle-container {
   position: absolute;
   top: 55%;
@@ -538,7 +546,7 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: CASAS COLGADAS (GLOW ACTIVO ÚNICAMENTE EN VERDE) */
+/* RETÍCULO B: CASAS COLGADAS */
 .target-casas-glow-wrapper {
   width: 108px;
   height: 137px;
