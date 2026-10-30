@@ -108,16 +108,11 @@
       </button>
     </div>
 
-    <!-- Barra Inferior de Diagnóstico con Acceso Rápido a Calibración -->
+    <!-- Barra Inferior de Diagnóstico Original -->
     <div class="bottom-info">
-      <div>Rumbo: <span id="debug-heading">--°</span></div>
-      <div>Cuenca: <span id="debug-cuenca">--°</span></div>
-      <div>Giro: <span id="debug-diff">--°</span></div>
-      <!-- Indicador activo de precisión en barra inferior -->
-      <button class="btn-badge-accuracy" id="btn-manual-calibrate" title="Toca para recalibrar">
-        <span class="mini-dot" id="mini-acc-dot"></span>
-        <span id="mini-acc-text">Precisión</span>
-      </button>
+      <div>Rumbo Móvil: <span id="debug-heading">--°</span></div>
+      <div>Rumbo Cuenca: <span id="debug-cuenca">--°</span></div>
+      <div>Giro requerido: <span id="debug-diff">--°</span></div>
     </div>
 
   </div>
@@ -144,12 +139,11 @@
     const isAndroid = /Android/.test(navigator.userAgent);
 
     // CONTROL DE PRECISIÓN Y FILTRADO REAL
-    let precisionState = 'low'; // Por defecto arranca en baja hasta que el sensor demuestre estabilidad
+    let precisionState = 'low';
     let appIniciada = false;
     let precisionFinalizada = false;
     let transitionToMainTimeout = null;
 
-    // Historial para detección de ruido magnético y fluctuaciones
     const headingHistory = [];
     const HISTORY_SIZE = 12;
     let totalSamples = 0;
@@ -180,9 +174,6 @@
     const debugHeading = document.getElementById('debug-heading');
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
-    const btnManualCalibrate = document.getElementById('btn-manual-calibrate');
-    const miniAccDot = document.getElementById('mini-acc-dot');
-    const miniAccText = document.getElementById('mini-acc-text');
 
     // INSTRUCCIONES ESPECÍFICAS
     function setupInstructionsText() {
@@ -212,31 +203,25 @@
     }
     setupInstructionsText();
 
-    // EVALUACIÓN DE PRECISIÓN BASADA EN SENSORES REALES Y ANÁLISIS DE VARIANZA
+    // EVALUACIÓN DE PRECISIÓN
     function evaluarPrecisionReal(event, rawHeading) {
       totalSamples++;
-
       let isAccurate = false;
 
       if (isIOS) {
-        // En iOS disponemos de la propiedad oficial de error angular
         const acc = event.webkitCompassAccuracy;
         if (typeof acc !== 'undefined' && acc !== null) {
-          // -1 indica no calibrado. Margen <= 15° indica buena calibración.
           if (acc >= 0 && acc <= 18) {
             isAccurate = true;
           }
         }
       } else {
-        // En Android, Chrome NO expone webkitCompassAccuracy.
-        // Se analiza la estabilidad del vector y la disponibilidad de sensor absoluto:
         if (event.absolute === true && rawHeading !== null) {
           headingHistory.push(rawHeading);
           if (headingHistory.length > HISTORY_SIZE) {
             headingHistory.shift();
           }
 
-          // Tras acumular al menos 10 muestras continuas sin saltos anómalos
           if (headingHistory.length >= HISTORY_SIZE && totalSamples > 20) {
             let maxDiff = 0;
             for (let i = 1; i < headingHistory.length; i++) {
@@ -244,7 +229,6 @@
               if (d > 180) d = 360 - d;
               if (d > maxDiff) maxDiff = d;
             }
-            // Si las lecturas no tienen jitter electromagnético extremo (> 30° entre muestras continuas)
             if (maxDiff < 25) {
               isAccurate = true;
             }
@@ -252,19 +236,8 @@
         }
       }
 
-      // Actualizar estado
       precisionState = isAccurate ? 'high' : 'low';
 
-      // Actualizar indicador discreto de barra inferior
-      if (precisionState === 'high') {
-        miniAccDot.className = 'mini-dot active';
-        miniAccText.textContent = 'Alta';
-      } else {
-        miniAccDot.className = 'mini-dot';
-        miniAccText.textContent = 'Baja';
-      }
-
-      // Gestión del modal solo si la comprobación aún no ha quedado cerrada definitivamente
       if (appIniciada && !precisionFinalizada) {
         if (precisionState === 'low') {
           if (transitionToMainTimeout) {
@@ -275,7 +248,6 @@
           accuracyStatusTag.className = "accuracy-low";
           calibrationModal.style.display = "flex";
         } else if (precisionState === 'high') {
-          // Si el modal está visible en pantalla, mostramos el éxito en verde y salimos en 2s
           if (calibrationModal.style.display !== "none") {
             accuracyStatusTag.textContent = "Precisión: Alta";
             accuracyStatusTag.className = "accuracy-high";
@@ -288,14 +260,13 @@
               }, 2000);
             }
           } else {
-            // Ya era alta antes de abrir el modal: no se abre
             precisionFinalizada = true;
           }
         }
       }
     }
 
-    // PRE-EVALUACIÓN PASIVA INMEDIATA
+    // PRE-EVALUACIÓN PASIVA
     function iniciarEvaluacionPasiva() {
       const handlerPasivo = (e) => {
         let h = null;
@@ -314,14 +285,6 @@
       }
     }
     iniciarEvaluacionPasiva();
-
-    // BOTÓN MANUAL PARA REABRIR LA CALIBRACIÓN EN CUALQUIER MOMENTO
-    btnManualCalibrate.addEventListener('click', () => {
-      precisionFinalizada = false;
-      accuracyStatusTag.textContent = "Precisión: Baja";
-      accuracyStatusTag.className = "accuracy-low";
-      calibrationModal.style.display = "flex";
-    });
 
     // CONSTRUIR CINTA AR
     function buildCompassTrack() {
@@ -391,13 +354,11 @@
         rawHeading = (360 - e.alpha) % 360;
       }
 
-      // Evaluar precisión continuamente
       evaluarPrecisionReal(e, rawHeading);
 
       if (rawHeading === null) return;
       currentHeading = rawHeading;
 
-      // Postura: plano vs vertical
       const beta = Math.abs(e.beta || 0);
       const wasVertical = isVertical;
       isVertical = beta > 45;
@@ -507,7 +468,6 @@
       permissionModal.style.display = 'none';
       appIniciada = true;
 
-      // Si al pulsar el botón la precisión ya se sabe que es baja, abrimos el modal
       if (precisionState === 'low') {
         accuracyStatusTag.textContent = "Precisión: Baja";
         accuracyStatusTag.className = "accuracy-low";
