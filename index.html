@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Mirando a Cuenca</title>
+  <title>Cuenca Finder</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -11,13 +11,22 @@
   <!-- Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal Inicial de Entrada / Permisos -->
+  <!-- Modal Inicial de Entrada / Permisos: "Cuenca Finder" con SVG de fondo -->
   <div id="permission-modal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="icon-cuenca">📍</div>
-      <h1>Mirando a Cuenca</h1>
-      <p>Coloca el móvil plano sobre la mano para la brújula, o levántalo frente a ti para buscar Cuenca con la cámara.</p>
-      <button class="btn-primary" id="start-btn">
+    <div class="modal-card landing-card">
+      
+      <!-- Contenedor del título con el SVG de las Casas Colgadas de fondo -->
+      <div class="brand-hero-container">
+        <div class="brand-bg-silhouette"></div>
+        <div class="brand-badge-pill">AR &amp; Brújula GPS</div>
+        <h1 class="brand-title">Cuenca<br><span class="brand-title-accent">Finder</span></h1>
+      </div>
+
+      <p class="landing-description">
+        Coloca el móvil plano sobre la mano para la brújula, o levántalo frente a ti para buscar Cuenca con la cámara.
+      </p>
+
+      <button class="btn-primary btn-landing" id="start-btn">
         <span>Comenzar experiencia</span>
       </button>
     </div>
