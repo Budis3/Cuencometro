@@ -55,7 +55,7 @@ body {
 }
 
 .modal-card {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 41, 59, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -125,18 +125,19 @@ body {
 /* BARRA SUPERIOR */
 .top-bar {
   pointer-events: auto;
-  padding: 1rem;
+  padding: 0.8rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%);
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+  z-index: 20;
 }
 
 .badge-status {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: 0.45rem 0.9rem;
@@ -159,7 +160,7 @@ body {
 }
 
 .btn-icon {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -185,7 +186,6 @@ body {
   position: relative;
 }
 
-/* Letrero contextual superior */
 .target-status-banner {
   font-size: 1.15rem;
   font-weight: 700;
@@ -201,13 +201,13 @@ body {
   text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
 }
 
-/* Triángulo isósceles inmóvil centrado en la vertical del teléfono */
+/* Triángulo isósceles inmóvil centrado */
 .fixed-top-triangle {
   width: 0;
   height: 0;
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
-  border-top: 22px solid rgba(255, 255, 255, 0.35); /* Color reposo */
+  border-top: 22px solid rgba(255, 255, 255, 0.35);
   margin-bottom: 0.6rem;
   transition: border-top-color 0.2s, filter 0.2s;
 }
@@ -350,103 +350,111 @@ body {
   flex: 1;
   display: none;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   padding: 0.5rem 0 1rem 0;
   position: relative;
 }
 
-/* Brújula Horizontal de Realidad Aumentada */
+/* BRÚJULA HORIZONTAL AR FLOTANTE */
 .ar-compass-ribbon-container {
-  width: 85%;
-  max-width: 380px;
-  height: 52px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  width: 90%;
+  max-width: 360px;
+  height: 54px;
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  margin-top: 0.5rem;
+  z-index: 15;
 }
 
-/* Marcador fijo central en la cinta */
+/* Línea central fija de rumbo */
 .ar-center-indicator {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 50%;
   width: 2px;
-  background: rgba(255, 255, 255, 0.6);
+  background: #ffffff;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
 }
 
-/* Triángulo indicador de Cuenca en la cinta horizontal */
+/* Triángulo indicador de Cuenca sobre la cinta */
 .ar-cuenca-target-pin {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 50%;
   width: 0;
   height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-top: 12px solid var(--danger);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 14px solid var(--danger);
   transform: translateX(-50%);
-  z-index: 6;
-  transition: border-top-color 0.2s, filter 0.2s;
+  z-index: 12;
+  transition: border-top-color 0.15s, filter 0.15s;
 }
 
 .ar-cuenca-target-pin.aligned {
   border-top-color: var(--success);
-  filter: drop-shadow(0 0 6px var(--success));
+  filter: drop-shadow(0 0 8px var(--success));
 }
 
-/* Pista graduada que se desplaza */
+/* Cinta deslizante graduada */
 .ar-compass-track {
   position: absolute;
   left: 50%;
+  top: 0;
+  height: 100%;
   display: flex;
   align-items: flex-end;
-  height: 100%;
   padding-bottom: 6px;
   will-change: transform;
+  white-space: nowrap;
 }
 
 .ar-compass-tick {
-  width: 60px; /* 15° * 4px */
-  display: flex;
+  width: 60px; /* 15° a 4px por grado */
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   flex-shrink: 0;
+  height: 100%;
 }
 
 .tick-line {
   width: 1px;
   height: 10px;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .ar-compass-tick.major .tick-line {
-  height: 16px;
-  background: rgba(255, 255, 255, 0.85);
+  height: 18px;
+  background: rgba(255, 255, 255, 0.95);
   width: 2px;
 }
 
 .tick-label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   margin-top: 2px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-/* Contenedor central del visor */
+/* Contenedor central del retículo */
 .ar-reticle-container {
   position: absolute;
-  top: 50%;
+  top: 55%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
@@ -456,7 +464,7 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: CÍRCULO CON CRUZ (REDUCIDO UN 30%: 140px * 0.7 = 98px) */
+/* RETÍCULO A: MIRA EN CRUZ (REDUCIDO UN 30%: 98px) */
 .target-cross-circle {
   width: 98px;
   height: 98px;
@@ -475,7 +483,6 @@ body {
   box-shadow: 0 0 25px rgba(16, 185, 129, 0.9);
 }
 
-/* Líneas cortas formando la cruz sin llegar al centro */
 .cross-line {
   position: absolute;
   background-color: var(--danger);
@@ -518,7 +525,7 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30%: 220x280 -> 154x196) */
+/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30%: 154x196) */
 .target-casas-container {
   width: 154px;
   height: 196px;
@@ -540,15 +547,15 @@ body {
   filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.95));
 }
 
-/* LETRERO DE DIRECCIÓN DINÁMICO (AMPLIADO Y SIN CORTES) */
+/* LETRERO DE DIRECCIÓN DINÁMICO AMPLIO */
 .ar-status-text {
-  margin-top: 1.4rem;
+  margin-top: 1.6rem;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 0.55rem 1.4rem;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 0.6rem 1.6rem;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   white-space: nowrap;
@@ -571,8 +578,9 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.65);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 20;
 }
 
 .bottom-info span {
