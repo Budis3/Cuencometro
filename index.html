@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración (Fondo 100% Opaco, cero transparencias a la brújula) -->
+  <!-- Modal de Calibración (Fondo 100% Opaco) -->
   <div id="calibration-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
@@ -91,7 +91,7 @@
       </div>
     </div>
 
-    <!-- 2. MODO CÁMARA (VERTICAL AL FRENTE) -->
+    <!-- 2. MODO CÁMARA (VERTICAL / LEVANTADO AL FRENTE) -->
     <div id="ar-mode">
       <div class="ar-compass-ribbon-container">
         <div class="ar-center-indicator"></div>
@@ -146,7 +146,7 @@
     let distanceKm = 0;
 
     let currentHeading = 0;
-    let isVertical = false;
+    let isDeviceUpright = false; // Levantado frente a los ojos (modo AR)
     let reticleMode = 'casas';
 
     const TOLERANCE_DEG = 12;
@@ -210,12 +210,11 @@
       }
     }
 
-    // GESTIÓN DE ORIENTACIÓN EN MODO AR (SIN GIROSCOPIO / PANTALLA NATIVA)
+    // EVALUACIÓN DE ORIENTACIÓN: SOLO ALERTA EN MODO AR SI ESTÁ APAISADO
     function checkScreenOrientation() {
       if (!appIniciada) return;
 
-      // Solo evaluamos el bloqueo cuando estamos en modo cámara/AR
-      if (isVertical) {
+      if (isDeviceUpright) {
         const isLandscape = window.matchMedia("(orientation: landscape)").matches || 
                             (window.innerWidth > window.innerHeight);
 
@@ -415,6 +414,7 @@
       }
     }
 
+    // DISCRIMINACIÓN ESFÉRICA PRECISA: PLANO (BRÚJULA) VS LEVANTADO (CÁMARA)
     function handleOrientation(e) {
       let rawHeading = null;
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -428,17 +428,26 @@
       if (rawHeading === null) return;
       currentHeading = rawHeading;
 
-      const beta = Math.abs(e.beta || 0);
-      const wasVertical = isVertical;
-      isVertical = beta > 45;
+      const betaRad = ((e.beta || 0) * Math.PI) / 180;
+      const gammaRad = ((e.gamma || 0) * Math.PI) / 180;
 
-      if (isVertical !== wasVertical) {
-        if (isVertical) {
+      // Inclinación absoluta respecto al horizonte terrestre
+      const cosTilt = Math.min(1, Math.max(-1, Math.cos(betaRad) * Math.cos(gammaRad)));
+      const tiltAngleDeg = Math.acos(cosTilt) * (180 / Math.PI);
+
+      const wasUpright = isDeviceUpright;
+      // Menos de 35° = plano en la mano (Brújula). 35° o más = levantado apuntando (AR)
+      isDeviceUpright = tiltAngleDeg >= 35;
+
+      if (isDeviceUpright !== wasUpright) {
+        if (isDeviceUpright) {
+          // Modo AR / Cámara (sea vertical o apaisado)
           compassMode.style.display = "none";
           arMode.style.display = "flex";
           video.style.display = "block";
           reticleToggleWrapper.style.display = "flex";
         } else {
+          // Modo Brújula (plano en mano)
           arMode.style.display = "none";
           compassMode.style.display = "flex";
           video.style.display = "none";
