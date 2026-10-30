@@ -1,0 +1,19 @@
+{
+  "name": "Cuenca Finder",
+  "short_name": "CuencaFinder",
+  "description": "Localizador de Cuenca mediante realidad aumentada y brújula GPS",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "icons": [
+    {
+      "src": "casas-colgadas.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
