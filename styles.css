@@ -356,24 +356,22 @@ body {
   position: relative;
 }
 
-/* BRÚJULA HORIZONTAL AR FLOTANTE */
+/* BRÚJULA HORIZONTAL AR FLOTANTE CON DIFUMINADO LATERAL */
 .ar-compass-ribbon-container {
-  width: 90%;
-  max-width: 360px;
-  height: 54px;
-  background: rgba(11, 15, 25, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 14px;
+  width: 92%;
+  max-width: 380px;
+  height: 52px;
+  background: transparent;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
   z-index: 15;
+  /* Difuminado suave en ambos extremos */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
 }
 
 /* Línea central fija de rumbo */
@@ -386,13 +384,13 @@ body {
   background: #ffffff;
   transform: translateX(-50%);
   z-index: 10;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
 }
 
 /* Triángulo indicador de Cuenca sobre la cinta */
 .ar-cuenca-target-pin {
   position: absolute;
-  top: 2px;
+  top: 1px;
   left: 50%;
   width: 0;
   height: 0;
@@ -401,12 +399,13 @@ body {
   border-top: 14px solid var(--danger);
   transform: translateX(-50%);
   z-index: 12;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.7));
   transition: border-top-color 0.15s, filter 0.15s;
 }
 
 .ar-cuenca-target-pin.aligned {
   border-top-color: var(--success);
-  filter: drop-shadow(0 0 8px var(--success));
+  filter: drop-shadow(0 0 10px var(--success));
 }
 
 /* Cinta deslizante graduada */
@@ -423,7 +422,7 @@ body {
 }
 
 .ar-compass-tick {
-  width: 60px; /* 15° a 4px por grado */
+  width: 60px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -435,20 +434,22 @@ body {
 .tick-line {
   width: 1px;
   height: 10px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .ar-compass-tick.major .tick-line {
   height: 18px;
   background: rgba(255, 255, 255, 0.95);
   width: 2px;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
 .tick-label {
   font-size: 0.72rem;
   font-weight: 700;
   margin-top: 2px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* Contenedor central del retículo */
@@ -464,71 +465,73 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: MIRA EN CRUZ (REDUCIDO UN 30%: 98px) */
+/* RETÍCULO A: MIRA EN CRUZ (REDUCIDO UN 10% ADICIONAL: 88px) */
 .target-cross-circle {
-  width: 98px;
-  height: 98px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   border: 3px solid var(--danger);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 10px rgba(239, 68, 68, 0.2);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .target-cross-circle.on-target {
   border-color: var(--success);
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.95), inset 0 0 15px rgba(16, 185, 129, 0.4);
 }
 
 .cross-line {
   position: absolute;
   background-color: var(--danger);
-  transition: background-color 0.15s;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  transition: background-color 0.15s, box-shadow 0.15s;
 }
 
 .target-cross-circle.on-target .cross-line {
   background-color: var(--success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
 }
 
 .cross-line.top {
-  top: -10px;
+  top: -9px;
   left: 50%;
   transform: translateX(-50%);
   width: 3px;
-  height: 10px;
+  height: 9px;
 }
 
 .cross-line.bottom {
-  bottom: -10px;
+  bottom: -9px;
   left: 50%;
   transform: translateX(-50%);
   width: 3px;
-  height: 10px;
+  height: 9px;
 }
 
 .cross-line.left {
-  left: -10px;
+  left: -9px;
   top: 50%;
   transform: translateY(-50%);
-  width: 10px;
+  width: 9px;
   height: 3px;
 }
 
 .cross-line.right {
-  right: -10px;
+  right: -9px;
   top: 50%;
   transform: translateY(-50%);
-  width: 10px;
+  width: 9px;
   height: 3px;
 }
 
-/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30%: 154x196) */
+/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30% ADICIONAL: 108x137 CON EFECTO GLOW) */
 .target-casas-container {
-  width: 154px;
-  height: 196px;
+  width: 108px;
+  height: 137px;
   background-color: var(--danger);
   -webkit-mask-image: url('casas-colgadas.svg');
   mask-image: url('casas-colgadas.svg');
@@ -538,13 +541,14 @@ body {
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+  /* Efecto Glow Neón */
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 16px rgba(239, 68, 68, 0.4));
   transition: background-color 0.15s, filter 0.15s;
 }
 
 .target-casas-container.on-target {
   background-color: var(--success);
-  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.95));
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 22px rgba(16, 185, 129, 0.7));
 }
 
 /* LETRERO DE DIRECCIÓN DINÁMICO AMPLIO */
