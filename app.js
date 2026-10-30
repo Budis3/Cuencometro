@@ -192,11 +192,19 @@ iniciarEvaluacionPasiva();
 
 // Discriminación con umbral de 20º: Plano (Brújula) vs Levantado (AR)
 function evaluarPosturaYModo(beta, gamma) {
-  const absB = Math.abs(beta || 0);
-  const absG = Math.abs(gamma || 0);
+  const b = beta || 0;
+  const g = gamma || 0;
 
-  // 1. REGLA PLANO: Solo brújula si ambos ejes están casi paralelos al suelo (umbral 20°)
-  const esPlano = (absB < 20) && (absG < 20);
+  const bRad = (b * Math.PI) / 180;
+  const gRad = (g * Math.PI) / 180;
+
+  // 1. INCLINACIÓN RESPECTO AL PLANO HORIZONTAL (SUELO / MESA)
+  // 0° = móvil plano mirando al cielo | 90° = móvil levantado mirando al frente
+  const cosTilt = Math.cos(bRad) * Math.cos(gRad);
+  const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
+
+  // Umbral limpio: menos de 25° respecto al suelo = MODO BRÚJULA
+  const esPlano = inclinacionSuelo < 25;
 
   if (esPlano) {
     if (currentMode !== 'compass') {
@@ -206,11 +214,10 @@ function evaluarPosturaYModo(beta, gamma) {
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
-    // En el plano de la mano NUNCA se activa el modal de aviso
     arOrientationModal.style.display = "none";
 
   } else {
-    // 2. MODO AR: En cualquier otra postura fuera del plano
+    // Levantado (>= 25°) = MODO AR
     if (currentMode !== 'ar') {
       currentMode = 'ar';
       compassMode.style.display = "none";
@@ -219,12 +226,16 @@ function evaluarPosturaYModo(beta, gamma) {
       reticleToggleWrapper.style.display = "flex";
     }
 
-    // 3. REGLA APAISADO EN MODO AR:
-    // Si en el aire el teléfono se gira de lado (absG > 45) o la ventana está apaisada
-    const estaDeLado = absG > 45;
-    const pantallaApaisada = window.innerWidth > window.innerHeight;
+    // 2. DISCRIMINACIÓN APAISADO EN MODO AR (SCREEN ROLL)
+    // Calcula la rotación física del dispositivo sobre su propio marco visual
+    const rollRad = Math.atan2(-Math.sin(gRad), Math.sin(bRad) * Math.cos(gRad));
+    const rollDeg = Math.abs(rollRad * (180 / Math.PI));
 
-    if (estaDeLado || pantallaApaisada) {
+    // Si el giro de pantalla sobrepasa los 50° hacia cualquier lado, está apaisado
+    // (o si el propio navegador detectó el cambio físico de viewport)
+    const estaApaisado = (rollDeg > 50 && rollDeg < 130) || (window.innerWidth > window.innerHeight);
+
+    if (estaApaisado) {
       arOrientationModal.style.display = "flex";
     } else {
       arOrientationModal.style.display = "none";
