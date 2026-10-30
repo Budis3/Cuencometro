@@ -369,7 +369,6 @@ body {
   justify-content: center;
   margin-top: 0.4rem;
   z-index: 15;
-  /* Difuminado suave en ambos extremos */
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
 }
@@ -465,7 +464,7 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: MIRA EN CRUZ (REDUCIDO UN 10% ADICIONAL: 88px) */
+/* RETÍCULO A: MIRA EN CRUZ (88px) */
 .target-cross-circle {
   width: 88px;
   height: 88px;
@@ -528,7 +527,7 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30% ADICIONAL: 108x137 CON EFECTO GLOW) */
+/* RETÍCULO B: CASAS COLGADAS CON GLOW EFECTIVO */
 /* 1. El contenedor exterior aplica el resplandor difuso */
 .target-casas-glow-wrapper {
   width: 108px;
@@ -561,6 +560,7 @@ body {
 .target-casas-glow-wrapper.on-target .target-casas-shape {
   background-color: var(--success);
 }
+
 /* LETRERO DE DIRECCIÓN DINÁMICO AMPLIO */
 .ar-status-text {
   margin-top: 1.6rem;
