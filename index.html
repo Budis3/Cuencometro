@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cuenca Finder</title>
+
+  <!-- PWA & Bloqueo Vertical Nativo -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CuencaFinder" />
+  <link rel="apple-touch-icon" href="casas-colgadas.svg" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -39,15 +48,6 @@
       <div class="accuracy-indicator-box">
         <span id="accuracy-status-tag" class="accuracy-low">Precisión: Baja</span>
       </div>
-    </div>
-  </div>
-
-  <!-- Modal de Aviso Exclusivo AR: Dispositivo en Horizontal/Apaisado -->
-  <div id="ar-orientation-modal" class="modal-overlay modal-opaque" style="display: none;">
-    <div class="modal-card modal-calibration-card">
-      <div class="icon-phone-tilt">📱</div>
-      <h1>Sujeta en Vertical</h1>
-      <p>Para buscar Cuenca con la cámara, por favor sostén el dispositivo en modo vertical.</p>
     </div>
   </div>
 
