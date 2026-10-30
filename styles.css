@@ -41,7 +41,7 @@ body {
   display: none;
 }
 
-/* MODALES 100% OPACOS (IMPIDEN QUE SE VEA LA BRÚJULA POR DEBAJO) */
+/* MODALES 100% OPACOS */
 .modal-overlay {
   position: absolute;
   inset: 0;
@@ -55,7 +55,7 @@ body {
 }
 
 .modal-opaque {
-  background: #0b0f19 !important; /* Totalmente sólido */
+  background: #0b0f19 !important;
 }
 
 /* BLOQUE DE MARCA STANDALONE */
@@ -84,7 +84,6 @@ body {
   }
 }
 
-/* Silueta: respiración pausada (10 segundos) */
 .brand-bg-silhouette {
   position: absolute;
   top: 48%;
@@ -156,7 +155,6 @@ body {
   display: inline-block;
 }
 
-/* TARJETA INFERIOR */
 .modal-card {
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -241,7 +239,6 @@ body {
   padding: 1rem 1.6rem;
 }
 
-/* MODALES DE CALIBRACIÓN Y ORIENTACIÓN */
 .modal-calibration-card {
   background: #182235;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -252,18 +249,6 @@ body {
   font-size: 2.8rem;
   margin-bottom: 0.6rem;
   animation: floatIconSlow 6s ease-in-out infinite;
-}
-
-.icon-phone-tilt {
-  font-size: 3rem;
-  margin-bottom: 0.8rem;
-  animation: rotatePhoneSlow 4s ease-in-out infinite;
-}
-
-@keyframes rotatePhoneSlow {
-  0%, 20% { transform: rotate(90deg); }
-  50%, 70% { transform: rotate(0deg); }
-  100% { transform: rotate(90deg); }
 }
 
 @keyframes floatIconSlow {
@@ -319,7 +304,6 @@ body {
   font-style: normal;
 }
 
-/* ETIQUETA DINÁMICA DE PRECISIÓN */
 .accuracy-indicator-box {
   margin-top: 0.5rem;
   display: flex;
@@ -364,7 +348,7 @@ body {
 }
 
 /* ============================================================
-   CONTENEDOR DE LA APLICACIÓN (OCULTO MIENTRAS HAYA MODALES)
+   CONTENEDOR DE LA APLICACIÓN
    ============================================================ */
 #app-container {
   position: relative;
@@ -672,7 +656,6 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: ECO RADAR PAUSADO */
 .target-cross-circle {
   width: 88px;
   height: 88px;
@@ -749,7 +732,6 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: PULSO DE CASAS PAUSADO */
 .target-casas-glow-wrapper {
   width: 108px;
   height: 137px;
@@ -788,7 +770,6 @@ body {
   background-color: var(--success);
 }
 
-/* BANNER DE ESTADO AR */
 .ar-status-text {
   margin-top: 1.6rem;
   font-size: 0.95rem;
@@ -814,7 +795,6 @@ body {
   transform: scale(1.04);
 }
 
-/* BOTÓN FLOTANTE INFERIOR DERECHO */
 .ar-reticle-toggle-wrapper {
   position: absolute;
   right: 1.2rem;
@@ -861,7 +841,6 @@ body {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* BARRA INFERIOR DE DIAGNÓSTICO */
 .bottom-info {
   pointer-events: auto;
   padding: 0.75rem 1rem;
@@ -880,4 +859,98 @@ body {
 .bottom-info span {
   font-weight: 600;
   color: #fff;
+}
+
+/* ============================================================
+   ADAPTACIÓN RESPONSIVE PARA MODO APAISADO (LANDSCAPE)
+   ============================================================ */
+@media screen and (orientation: landscape) and (max-height: 520px) {
+  /* Landing inicial en landscape */
+  .brand-hero-standalone {
+    min-height: 130px;
+    margin-bottom: 0.6rem;
+  }
+  .brand-title {
+    font-size: 2.6rem;
+  }
+  .brand-bg-silhouette {
+    width: 140px;
+    height: 180px;
+  }
+  .modal-card {
+    padding: 1.2rem 1.4rem;
+    max-width: 480px;
+  }
+  .landing-description {
+    font-size: 0.85rem;
+    margin-bottom: 0.9rem;
+  }
+
+  /* Modo AR en apaisado */
+  #ar-mode {
+    padding-top: 0.8rem;
+  }
+  .ar-compass-ribbon-container {
+    height: 42px;
+    max-width: 460px;
+  }
+  .ar-reticle-container {
+    top: 50%;
+  }
+  .target-casas-glow-wrapper {
+    width: 78px;
+    height: 98px;
+  }
+  .target-cross-circle {
+    width: 68px;
+    height: 68px;
+  }
+  .ar-status-text {
+    margin-top: 0.8rem;
+    font-size: 0.82rem;
+    padding: 0.4rem 1.2rem;
+  }
+
+  /* Botón de cambio de mira en apaisado: tamaño compacto en esquina */
+  .ar-reticle-toggle-wrapper {
+    right: 1.5rem;
+    bottom: 3.4rem;
+    gap: 0.2rem;
+  }
+  .reticle-toggle-label {
+    font-size: 0.72rem;
+  }
+  .btn-toggle-round {
+    width: 48px;
+    height: 48px;
+    font-size: 1.3rem;
+  }
+
+  /* Brújula en apaisado (por si se pone plano en landscape) */
+  .compass-container {
+    width: 180px;
+    height: 180px;
+  }
+  .needle-shape {
+    height: 140px;
+  }
+  .needle-cuenca-head {
+    border-bottom-width: 60px;
+  }
+  .needle-tail {
+    border-top-width: 45px;
+  }
+  .info-labels {
+    margin-top: 0.6rem;
+  }
+  .target-city {
+    font-size: 1.1rem;
+  }
+  .target-distance {
+    font-size: 0.8rem;
+  }
+  .bottom-info {
+    padding: 0.45rem 1rem;
+    font-size: 0.62rem;
+  }
 }
