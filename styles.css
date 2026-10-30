@@ -122,58 +122,6 @@ body {
   pointer-events: none;
 }
 
-/* BARRA SUPERIOR */
-.top-bar {
-  pointer-events: auto;
-  padding: 0.8rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
-  z-index: 20;
-}
-
-.badge-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 0.45rem 0.9rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--danger);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.dot.active {
-  background: var(--success);
-  box-shadow: 0 0 10px var(--success);
-}
-
-.btn-icon {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--text);
-  padding: 0.45rem 0.8rem;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
 /* 1. MODO BRÚJULA (PLANO EN LA MANO) */
 #compass-mode {
   flex: 1;
@@ -361,7 +309,7 @@ body {
   width: 92%;
   max-width: 380px;
   height: 52px;
-  background: rgb(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -528,7 +476,6 @@ body {
 }
 
 /* RETÍCULO B: CASAS COLGADAS CON GLOW EFECTIVO */
-/* 1. El contenedor exterior aplica el resplandor difuso */
 .target-casas-glow-wrapper {
   width: 108px;
   height: 137px;
@@ -541,7 +488,6 @@ body {
   filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.8));
 }
 
-/* 2. El elemento interior aloja la máscara del SVG y el color */
 .target-casas-shape {
   width: 100%;
   height: 100%;
@@ -581,6 +527,51 @@ body {
   border-color: rgba(16, 185, 129, 0.5);
   color: var(--success);
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+/* BOTÓN FLOTANTE INFERIOR DERECHO: CAMBIAR MIRA */
+.ar-reticle-toggle-wrapper {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 4.2rem;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  z-index: 25;
+}
+
+.reticle-toggle-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.02em;
+}
+
+.btn-toggle-round {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s, background-color 0.15s, border-color 0.15s;
+}
+
+.btn-toggle-round:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 /* BARRA INFERIOR DE DIAGNÓSTICO */
