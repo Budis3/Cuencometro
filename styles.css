@@ -40,8 +40,8 @@ body {
   display: none;
 }
 
-/* MODAL DE PERMISOS E INICIO */
-#permission-modal {
+/* MODALES DE BIENVENIDA Y CALIBRACIÓN */
+.modal-overlay {
   position: absolute;
   inset: 0;
   background: radial-gradient(circle at center, #1e293b 0%, #0b0f19 100%);
@@ -55,7 +55,7 @@ body {
 }
 
 .modal-card {
-  background: rgba(30, 41, 59, 0.75);
+  background: rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -74,17 +74,21 @@ body {
 }
 
 .modal-card h1 {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   letter-spacing: -0.02em;
 }
 
 .modal-card p {
   color: var(--text-muted);
   font-size: 0.95rem;
-  line-height: 1.4;
+  line-height: 1.45;
   margin-bottom: 1.8rem;
+}
+
+.modal-card strong {
+  color: #fff;
 }
 
 .btn-primary {
@@ -178,6 +182,39 @@ body {
   justify-content: center;
   padding: 1rem;
   transition: opacity 0.3s;
+  position: relative;
+}
+
+/* Letrero contextual superior */
+.target-status-banner {
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.8rem;
+  transition: color 0.2s;
+}
+
+.target-status-banner.aligned {
+  color: var(--success);
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+/* Triángulo isósceles inmóvil centrado en la vertical del teléfono */
+.fixed-top-triangle {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 22px solid rgba(255, 255, 255, 0.35); /* Color reposo */
+  margin-bottom: 0.6rem;
+  transition: border-top-color 0.2s, filter 0.2s;
+}
+
+.fixed-top-triangle.aligned {
+  border-top-color: var(--success);
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.9));
 }
 
 .compass-container {
@@ -290,7 +327,7 @@ body {
 }
 
 .info-labels {
-  margin-top: 2rem;
+  margin-top: 1.6rem;
   text-align: center;
 }
 
@@ -315,21 +352,98 @@ body {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 0;
+  padding: 0.5rem 0 1rem 0;
   position: relative;
 }
 
-.ar-compass-bar {
+/* Brújula Horizontal de Realidad Aumentada */
+.ar-compass-ribbon-container {
+  width: 85%;
+  max-width: 380px;
+  height: 52px;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 0.5rem 1.3rem;
-  border-radius: 9999px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Marcador fijo central en la cinta */
+.ar-center-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.6);
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+/* Triángulo indicador de Cuenca en la cinta horizontal */
+.ar-cuenca-target-pin {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 12px solid var(--danger);
+  transform: translateX(-50%);
+  z-index: 6;
+  transition: border-top-color 0.2s, filter 0.2s;
+}
+
+.ar-cuenca-target-pin.aligned {
+  border-top-color: var(--success);
+  filter: drop-shadow(0 0 6px var(--success));
+}
+
+/* Pista graduada que se desplaza */
+.ar-compass-track {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  padding-bottom: 6px;
+  will-change: transform;
+}
+
+.ar-compass-tick {
+  width: 60px; /* 15° * 4px */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tick-line {
+  width: 1px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.ar-compass-tick.major .tick-line {
+  height: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  width: 2px;
+}
+
+.tick-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Contenedor central del visor */
 .ar-reticle-container {
   position: absolute;
   top: 50%;
@@ -339,27 +453,75 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
-/* Círculo estándar */
-.target-circle {
-  width: 140px;
-  height: 140px;
+/* RETÍCULO A: CÍRCULO CON CRUZ (REDUCIDO UN 30%: 140px * 0.7 = 98px) */
+.target-cross-circle {
+  width: 98px;
+  height: 98px;
   border-radius: 50%;
-  border: 4px solid var(--danger);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  border: 3px solid var(--danger);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.target-circle.on-target {
+.target-cross-circle.on-target {
   border-color: var(--success);
-  box-shadow: 0 0 32px rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.9);
 }
 
-/* Casas Colgadas SVG integrado como máscara para cambio de color */
+/* Líneas cortas formando la cruz sin llegar al centro */
+.cross-line {
+  position: absolute;
+  background-color: var(--danger);
+  transition: background-color 0.15s;
+}
+
+.target-cross-circle.on-target .cross-line {
+  background-color: var(--success);
+}
+
+.cross-line.top {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 10px;
+}
+
+.cross-line.bottom {
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 10px;
+}
+
+.cross-line.left {
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 3px;
+}
+
+.cross-line.right {
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 3px;
+}
+
+/* RETÍCULO B: CASAS COLGADAS (REDUCIDO UN 30%: 220x280 -> 154x196) */
 .target-casas-container {
-  width: 220px;
-  height: 280px;
+  width: 154px;
+  height: 196px;
   background-color: var(--danger);
   -webkit-mask-image: url('casas-colgadas.svg');
   mask-image: url('casas-colgadas.svg');
@@ -378,37 +540,42 @@ body {
   filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.95));
 }
 
+/* LETRERO DE DIRECCIÓN DINÁMICO (AMPLIADO Y SIN CORTES) */
 .ar-status-text {
-  margin-top: 1.2rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  margin-top: 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(0, 0, 0, 0.65);
-  padding: 0.35rem 0.9rem;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.55rem 1.4rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+  max-width: 90vw;
+  text-align: center;
 }
 
-/* BARRA INFERIOR */
+.ar-status-text.on-target {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--success);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+/* BARRA INFERIOR DE DIAGNÓSTICO */
 .bottom-info {
   pointer-events: auto;
   padding: 0.75rem 1rem;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: rgba(0, 0, 0, 0.55);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.btn-flip {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  cursor: pointer;
+.bottom-info span {
+  font-weight: 600;
+  color: #fff;
 }
