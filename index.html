@@ -91,7 +91,7 @@
     <!-- 2. MODO CÁMARA (VERTICAL AL FRENTE) -->
     <div id="ar-mode">
       
-      <!-- BRÚJULA HORIZONTAL AR VISIBLE -->
+      <!-- BRÚJULA HORIZONTAL AR CON EXTREMOS DIFUMINADOS -->
       <div class="ar-compass-ribbon-container">
         <!-- Marcador central fijo de mira -->
         <div class="ar-center-indicator"></div>
@@ -103,10 +103,10 @@
         <div class="ar-compass-track" id="ar-compass-track"></div>
       </div>
 
-      <!-- Contenedor central del retículo (reducido un 30%) -->
+      <!-- Contenedor central del retículo -->
       <div class="ar-reticle-container">
         
-        <!-- Retículo A: Círculo con 4 líneas formando una cruz -->
+        <!-- Retículo A: Círculo con 4 líneas formando una cruz (reducido un 10%) -->
         <div class="target-cross-circle" id="circle-reticle" style="display: none;">
           <div class="cross-line top"></div>
           <div class="cross-line bottom"></div>
@@ -114,7 +114,7 @@
           <div class="cross-line right"></div>
         </div>
 
-        <!-- Retículo B: SVG Casas Colgadas con máscara dinámica -->
+        <!-- Retículo B: SVG Casas Colgadas con máscara dinámica y glow (reducido un 30% adicional) -->
         <div class="target-casas-container" id="casas-reticle"></div>
 
         <!-- Letrero dinámico ampliado sin cortes -->
@@ -147,7 +147,7 @@
     let reticleMode = 'casas';
 
     const TOLERANCE_DEG = 8;
-    const PX_PER_DEG = 4; // Escala: 4 píxeles por cada grado angular
+    const PX_PER_DEG = 4;
 
     // Elementos DOM
     const permissionModal = document.getElementById('permission-modal');
@@ -307,15 +307,11 @@
       }
 
       // 2. MODO AR: BRÚJULA HORIZONTAL
-      // Desplazamos la cinta según el rumbo actual
-      // El ciclo base 0° está centrado en el offset de 360° (360 * 4 = 1440px)
       const baseTrackOffset = 1440; 
       const trackShift = -(baseTrackOffset + (currentHeading * PX_PER_DEG));
       arCompassTrack.style.transform = `translateX(${trackShift}px)`;
 
-      // El pin triangular de Cuenca se desplaza relativo al centro de la cinta
-      // Limitamos el rango para que se mantenga dentro del contenedor si se aleja mucho
-      const maxPinOffset = 140; // píxeles máximos dentro del visor
+      const maxPinOffset = 140;
       const pinOffset = Math.max(-maxPinOffset, Math.min(maxPinOffset, diff * PX_PER_DEG));
       arCuencaTargetPin.style.transform = `translateX(calc(-50% + ${pinOffset}px))`;
       
