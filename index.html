@@ -8,6 +8,13 @@
 </head>
 <body>
 
+  <!-- Overlay de bloqueo en horizontal (Landscape) -->
+  <div id="landscape-blocker">
+    <div class="rotate-phone-icon">📱</div>
+    <h2>Por favor, gira tu móvil</h2>
+    <p>Cuenca Finder está optimizada para usarse exclusivamente en posición vertical.</p>
+  </div>
+
   <!-- Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
@@ -412,7 +419,6 @@
       let diff = ((bearingToCuenca - currentHeading + 540) % 360) - 180;
       const isLookingAtCuenca = Math.abs(diff) <= TOLERANCE_DEG;
 
-      // Microvibración háptica única al entrar en rango
       if (isLookingAtCuenca && !wasAlignedLastFrame) {
         if (navigator.vibrate) navigator.vibrate(40);
       }
