@@ -1,4 +1,3 @@
-
 const CUENCA_LAT = 40.07833;
 const CUENCA_LON = -2.12889;
 
@@ -16,7 +15,7 @@ const PX_PER_DEG = 4;
 let wasAlignedLastFrame = false;
 
 // Detección de plataforma
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/.test(navigator.userAgent);
 
@@ -34,7 +33,6 @@ let totalSamples = 0;
 const appContainer = document.getElementById('app-container');
 const permissionModal = document.getElementById('permission-modal');
 const calibrationModal = document.getElementById('calibration-modal');
-const arOrientationModal = document.getElementById('ar-orientation-modal');
 const calibrationInstructions = document.getElementById('calibration-instructions');
 const accuracyStatusTag = document.getElementById('accuracy-status-tag');
 const startBtn = document.getElementById('start-btn');
@@ -59,28 +57,35 @@ const debugHeading = document.getElementById('debug-heading');
 const debugCuenca = document.getElementById('debug-cuenca');
 const debugDiff = document.getElementById('debug-diff');
 
-// Control centralizado de visibilidad
+// Control centralizado de visibilidad (Oculta la brújula si hay modales activos)
 function actualizarVisibilidadApp() {
   const modalInicioVisible = permissionModal.style.display !== 'none';
   const modalCalibracionVisible = calibrationModal.style.display !== 'none';
-  const modalOrientacionVisible = arOrientationModal.style.display !== 'none';
 
-  if (!appIniciada || modalInicioVisible || modalCalibracionVisible || modalOrientacionVisible) {
+  if (!appIniciada || modalInicioVisible || modalCalibracionVisible) {
     appContainer.classList.add('app-hidden');
   } else {
     appContainer.classList.remove('app-hidden');
   }
 }
 
-// Pantalla completa
-function requestAppFullscreen() {
+// Pantalla completa y bloqueo de orientación por software (en Android PWA / Fullscreen)
+async function requestAppFullscreenAndOrientation() {
   const docEl = document.documentElement;
-  if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
-  else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
-  else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
+  try {
+    if (docEl.requestFullscreen) await docEl.requestFullscreen();
+    else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+    else if (docEl.msRequestFullscreen) await docEl.msRequestFullscreen();
+  } catch (e) {
+    // Modo ventana o soporte parcial
+  }
+
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('portrait-primary').catch(() => {});
+  }
 }
 
-// Textos de calibración según sistema
+// Textos de calibración detallados según sistema
 function setupInstructionsText() {
   if (isIOS) {
     calibrationInstructions.innerHTML = `
@@ -106,10 +111,9 @@ function setupInstructionsText() {
     `;
   }
 }
-
 setupInstructionsText();
 
-// Evaluación de precisión magnética
+// Evaluación de precisión magnética con persistencia
 function evaluarPrecisionReal(event, rawHeading) {
   if (precisionFinalizada) return;
 
@@ -152,12 +156,10 @@ function evaluarPrecisionReal(event, rawHeading) {
         clearTimeout(transitionToMainTimeout);
         transitionToMainTimeout = null;
       }
-
       accuracyStatusTag.textContent = "Precisión: Baja";
       accuracyStatusTag.className = "accuracy-low";
       calibrationModal.style.display = "flex";
       actualizarVisibilidadApp();
-
     } else if (precisionState === 'high') {
       accuracyStatusTag.textContent = "Precisión: Alta";
       accuracyStatusTag.className = "accuracy-high";
@@ -178,13 +180,11 @@ function evaluarPrecisionReal(event, rawHeading) {
 function iniciarEvaluacionPasiva() {
   const handlerPasivo = (e) => {
     let h = null;
-
     if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
       h = e.webkitCompassHeading;
     } else if (e.alpha !== null) {
       h = (360 - e.alpha) % 360;
     }
-
     evaluarPrecisionReal(e, h);
   };
 
@@ -194,84 +194,45 @@ function iniciarEvaluacionPasiva() {
     window.addEventListener('deviceorientation', handlerPasivo, true);
   }
 }
-
 iniciarEvaluacionPasiva();
 
-// =====================================================
-// DETECCIÓN DE POSTURA DEL MÓVIL
-// =====================================================
-
-// Última inclinación conocida del dispositivo
-let ultimaBeta = 0;
-let ultimaGamma = 0;
-
-// Discriminación de postura: Brújula / AR / Landscape
+// Conmutación pura Plano (Brújula) vs Levantado (Cámara/AR)
 function evaluarPosturaYModo(beta, gamma) {
+  const bRad = ((beta || 0) * Math.PI) / 180;
+  const gRad = ((gamma || 0) * Math.PI) / 180;
 
-  const b = beta ?? 0;
-  const g = gamma ?? 0;
-
-  ultimaBeta = b;
-  ultimaGamma = g;
-
-  // 1. Detectar si el móvil está tumbado
-  const bRad = (b * Math.PI) / 180;
-  const gRad = (g * Math.PI) / 180;
-
+  // Inclinación angular respecto al plano del suelo
   const cosTilt = Math.abs(Math.cos(bRad) * Math.cos(gRad));
+  const inclinacionSuelo = Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
 
-  const anguloElevacionSuelo =
-    Math.acos(Math.max(-1, Math.min(1, cosTilt))) * (180 / Math.PI);
+  // Menor a 25° respecto al suelo = Plano en mano (Brújula)
+  const esPlano = inclinacionSuelo < 25;
 
-  const esPlano = anguloElevacionSuelo < 22;
-
-  // 2. Detectar la orientación de pantalla por separado
-  const estaApaisado = window.innerWidth > window.innerHeight;
-
-  // 3. MODO BRÚJULA: móvil tumbado
   if (esPlano) {
-
     if (currentMode !== 'compass') {
       currentMode = 'compass';
-
       compassMode.style.display = "flex";
       arMode.style.display = "none";
       video.style.display = "none";
       reticleToggleWrapper.style.display = "none";
     }
-
-    arOrientationModal.style.display = "none";
-
   } else {
-
-    // 4. MODO AR: móvil levantado
+    // Mayor o igual a 25° = Levantado apuntando (AR)
     if (currentMode !== 'ar') {
       currentMode = 'ar';
-
       compassMode.style.display = "none";
       arMode.style.display = "flex";
       video.style.display = "block";
       reticleToggleWrapper.style.display = "flex";
-    }
-
-    // 5. Mostrar modal únicamente si la pantalla está en landscape
-    if (estaApaisado) {
-      arOrientationModal.style.display = "flex";
-    } else {
-      arOrientationModal.style.display = "none";
     }
   }
 
   actualizarVisibilidadApp();
 }
 
-// =====================================================
-// LECTURA DE ORIENTACIÓN GENERAL
-// =====================================================
-
+// Lectura de orientación
 function handleOrientation(e) {
   let rawHeading = null;
-
   if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
     rawHeading = e.webkitCompassHeading;
   } else if (e.alpha !== null) {
@@ -279,40 +240,26 @@ function handleOrientation(e) {
   }
 
   evaluarPrecisionReal(e, rawHeading);
-
   if (rawHeading !== null) {
     currentHeading = rawHeading;
   }
 
   const beta = e.beta || 0;
   const gamma = e.gamma || 0;
-
   evaluarPosturaYModo(beta, gamma);
 
   actualizarVista();
 }
 
-// Construcción de la cinta métrica AR
+// Cinta de grados AR
 function buildCompassTrack() {
-  const cardinalMap = {
-    0: 'N',
-    45: 'NE',
-    90: 'E',
-    135: 'SE',
-    180: 'S',
-    225: 'SO',
-    270: 'O',
-    315: 'NO'
-  };
-
+  const cardinalMap = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SO', 270: 'O', 315: 'NO' };
   let html = '';
-
   for (let cycle = -1; cycle <= 2; cycle++) {
     for (let deg = 0; deg < 360; deg += 15) {
       const absDeg = (deg + 360) % 360;
       const isMajor = deg % 45 === 0;
       const label = cardinalMap[absDeg] || `${absDeg}°`;
-
       html += `
         <div class="ar-compass-tick ${isMajor ? 'major' : ''}">
           <div class="tick-line"></div>
@@ -321,10 +268,8 @@ function buildCompassTrack() {
       `;
     }
   }
-
   arCompassTrack.innerHTML = html;
 }
-
 buildCompassTrack();
 
 // Rumbo geográfico
@@ -332,61 +277,48 @@ function calculateBearing(lat1, lon1, lat2, lon2) {
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
-
   const y = Math.sin(Δλ) * Math.cos(φ2);
-
-  const x = Math.cos(φ1) * Math.sin(φ2) -
-            Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-// Distancia en línea recta (Haversine)
+// Distancia Haversine
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
-
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) *
-            Math.cos(lat2 * Math.PI / 180) *
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// Inicialización de la cámara trasera
+// Cámara trasera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" } },
       audio: false
     });
-
     video.srcObject = stream;
     video.play();
-
   } catch (err) {
     console.warn("Cámara trasera no accesible:", err);
   }
 }
 
-// Actualización visual de brújula, agujas y retículo
+// Renderizado de UI
 function actualizarVista() {
   compassDial.style.transform = `rotate(${-currentHeading}deg)`;
-
   const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
   cuencaNeedle.style.transform = `rotate(${needleAngle}deg)`;
 
   let diff = ((bearingToCuenca - currentHeading + 540) % 360) - 180;
-
   const isLookingAtCuenca = Math.abs(diff) <= TOLERANCE_DEG;
 
   if (isLookingAtCuenca && !wasAlignedLastFrame) {
     if (navigator.vibrate) navigator.vibrate(40);
   }
-
   wasAlignedLastFrame = isLookingAtCuenca;
 
   if (isLookingAtCuenca) {
@@ -394,41 +326,31 @@ function actualizarVista() {
     needleHead.style.borderBottomColor = "#10b981";
     bannerStatusText.textContent = "Mirando a Cuenca";
     bannerStatusText.classList.add('aligned');
-
+    
     circleReticle.classList.add('on-target');
     casasReticle.classList.add('on-target');
     arGuidanceText.textContent = "🎯 ¡Estás mirando a Cuenca!";
     arGuidanceText.classList.add('on-target');
-
   } else {
     fixedTriangle.classList.remove('aligned');
     needleHead.style.borderBottomColor = "#ef4444";
     bannerStatusText.textContent = "Buscando Cuenca";
     bannerStatusText.classList.remove('aligned');
-
+    
     circleReticle.classList.remove('on-target');
     casasReticle.classList.remove('on-target');
-    arGuidanceText.textContent = diff > 0
-      ? "Gira a la derecha ➡️"
-      : "⬅️ Gira a la izquierda";
-
+    arGuidanceText.textContent = diff > 0 ? "Gira a la derecha ➡️" : "⬅️ Gira a la izquierda";
     arGuidanceText.classList.remove('on-target');
   }
 
-  const baseTrackOffset = 1440;
+  const baseTrackOffset = 1440; 
   const trackShift = -(baseTrackOffset + (currentHeading * PX_PER_DEG));
-
   arCompassTrack.style.transform = `translateX(${trackShift}px)`;
 
   const maxPinOffset = 140;
-  const pinOffset = Math.max(
-    -maxPinOffset,
-    Math.min(maxPinOffset, diff * PX_PER_DEG)
-  );
-
-  arCuencaTargetPin.style.transform =
-    `translateX(calc(-50% + ${pinOffset}px))`;
-
+  const pinOffset = Math.max(-maxPinOffset, Math.min(maxPinOffset, diff * PX_PER_DEG));
+  arCuencaTargetPin.style.transform = `translateX(calc(-50% + ${pinOffset}px))`;
+  
   if (isLookingAtCuenca) {
     arCuencaTargetPin.classList.add('aligned');
   } else {
@@ -437,11 +359,10 @@ function actualizarVista() {
 
   debugHeading.textContent = `${Math.round(currentHeading)}°`;
   debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
-  debugDiff.textContent =
-    `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
+  debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
 }
 
-// Seguimiento GPS
+// Geolocalización
 function initGPS() {
   if (!navigator.geolocation) return;
 
@@ -449,86 +370,53 @@ function initGPS() {
     (pos) => {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
-
-      bearingToCuenca = calculateBearing(
-        userLat, userLon, CUENCA_LAT, CUENCA_LON
-      );
-
-      distanceKm = calculateDistance(
-        userLat, userLon, CUENCA_LAT, CUENCA_LON
-      );
-
-      distanceLabel.textContent =
-        `A ${Math.round(distanceKm)} km en línea recta`;
-
+      bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceLabel.textContent = `A ${Math.round(distanceKm)} km en línea recta`;
       actualizarVista();
     },
-
     () => {
       userLat = 40.4168;
       userLon = -3.7038;
-
-      bearingToCuenca = calculateBearing(
-        userLat, userLon, CUENCA_LAT, CUENCA_LON
-      );
-
-      distanceKm = calculateDistance(
-        userLat, userLon, CUENCA_LAT, CUENCA_LON
-      );
-
-      distanceLabel.textContent =
-        `Aprox. ${Math.round(distanceKm)} km (Modo estimado)`;
-
+      bearingToCuenca = calculateBearing(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceKm = calculateDistance(userLat, userLon, CUENCA_LAT, CUENCA_LON);
+      distanceLabel.textContent = `Aprox. ${Math.round(distanceKm)} km (Modo estimado)`;
       actualizarVista();
     },
-
     { enableHighAccuracy: true, maximumAge: 5000 }
   );
 }
 
-// Botón "Comenzar experiencia"
+// Botón de inicio
 startBtn.addEventListener('click', async () => {
-
-  requestAppFullscreen();
+  await requestAppFullscreenAndOrientation();
 
   permissionModal.style.display = 'none';
   appIniciada = true;
-
   actualizarVisibilidadApp();
 
-  // Si la brújula no estaba calibrada previamente, muestra el modal
   if (!precisionFinalizada && precisionState === 'low') {
     accuracyStatusTag.textContent = "Precisión: Baja";
     accuracyStatusTag.className = "accuracy-low";
-
     calibrationModal.style.display = "flex";
-
     actualizarVisibilidadApp();
   }
 
   initGPS();
-
   await startCamera();
 
-  if (
-    typeof DeviceOrientationEvent !== 'undefined' &&
-    typeof DeviceOrientationEvent.requestPermission === 'function'
-  ) {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const res = await DeviceOrientationEvent.requestPermission();
-
       if (res === 'granted') {
         window.addEventListener('deviceorientation', handleOrientation, true);
       } else {
         alert('Permiso denegado para la orientación.');
       }
-
     } catch (err) {
       console.error(err);
     }
-
   } else {
-
     if ('ondeviceorientationabsolute' in window) {
       window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     } else {
@@ -537,39 +425,21 @@ startBtn.addEventListener('click', async () => {
   }
 });
 
-// Selector de mira (Casas Colgadas / Círculo con cruz)
+// Selector de mira
 toggleReticleBtn.addEventListener('click', () => {
-
   if (reticleMode === 'casas') {
     reticleMode = 'circle';
-
     casasReticle.style.display = 'none';
     circleReticle.style.display = 'flex';
-
     reticleIcon.textContent = "🏛️";
-
   } else {
     reticleMode = 'casas';
-
     circleReticle.style.display = 'none';
     casasReticle.style.display = 'block';
-
     reticleIcon.textContent = "⭕";
   }
 });
 
-// Listener de cambio de tamaño de ventana
 window.addEventListener('resize', () => {
-  if (appIniciada) {
-    evaluarPosturaYModo(ultimaBeta, ultimaGamma);
-  }
+  if (appIniciada) actualizarVisibilidadApp();
 });
-
-// Detectar cambios de orientación de pantalla
-if (screen.orientation) {
-  screen.orientation.addEventListener('change', () => {
-    if (appIniciada) {
-      evaluarPosturaYModo(ultimaBeta, ultimaGamma);
-    }
-  });
-}
