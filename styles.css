@@ -41,18 +41,21 @@ body {
   display: none;
 }
 
-/* MODALES BASE: ENTRADA SUAVE Y SIN TRASLUCIDEZ DE ELEMENTOS POSTERIORES */
+/* MODALES 100% OPACOS (IMPIDEN QUE SE VEA LA BRÚJULA POR DEBAJO) */
 .modal-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, #1e293b 0%, #0b0f19 100%);
-  z-index: 100;
+  z-index: 500;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 1.5rem;
   text-align: center;
+}
+
+.modal-opaque {
+  background: #0b0f19 !important; /* Totalmente sólido */
 }
 
 /* BLOQUE DE MARCA STANDALONE */
@@ -81,7 +84,7 @@ body {
   }
 }
 
-/* Silueta: respiración ultra pausada (10 segundos) */
+/* Silueta: respiración pausada (10 segundos) */
 .brand-bg-silhouette {
   position: absolute;
   top: 48%;
@@ -155,9 +158,7 @@ body {
 
 /* TARJETA INFERIOR */
 .modal-card {
-  background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 28px;
   padding: 2.2rem 1.6rem;
@@ -166,7 +167,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
   animation: cardEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
 }
 
@@ -193,7 +194,6 @@ body {
   text-align: center;
 }
 
-/* BOTÓN PRINCIPAL CON DESTELLO ESPACIADO (9 segundos) */
 .btn-primary {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
@@ -241,20 +241,11 @@ body {
   padding: 1rem 1.6rem;
 }
 
-/* MODALES DE CALIBRACIÓN Y ROTACIÓN AR */
-.modal-calibration-overlay {
-  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.72) 0%, rgba(11, 15, 25, 0.8) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 200;
-}
-
+/* MODALES DE CALIBRACIÓN Y ORIENTACIÓN */
 .modal-calibration-card {
-  background: rgba(30, 41, 59, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #182235;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
 }
 
 .icon-cuenca {
@@ -372,7 +363,9 @@ body {
   100% { box-shadow: 0 0 24px rgba(16, 185, 129, 0.9); }
 }
 
-/* CONTENEDOR GENERAL (OCULTO HASTA INICIAR) */
+/* ============================================================
+   CONTENEDOR DE LA APLICACIÓN (OCULTO MIENTRAS HAYA MODALES)
+   ============================================================ */
 #app-container {
   position: relative;
   width: 100%;
@@ -381,6 +374,15 @@ body {
   display: flex;
   flex-direction: column;
   pointer-events: none;
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+#app-container.app-hidden {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* 1. MODO BRÚJULA */
@@ -670,7 +672,7 @@ body {
   width: 100%;
 }
 
-/* RETÍCULO A: ECO RADAR PAUSADO (4.5 segundos) */
+/* RETÍCULO A: ECO RADAR PAUSADO */
 .target-cross-circle {
   width: 88px;
   height: 88px;
@@ -747,7 +749,7 @@ body {
   height: 3px;
 }
 
-/* RETÍCULO B: PULSO DE CASAS PAUSADO (4.5 segundos) */
+/* RETÍCULO B: PULSO DE CASAS PAUSADO */
 .target-casas-glow-wrapper {
   width: 108px;
   height: 137px;
@@ -875,10 +877,6 @@ body {
   z-index: 20;
 }
 
-.bottom-info span {
-  font-weight: 600;
-  color: #fff;
-}
 .bottom-info span {
   font-weight: 600;
   color: #fff;
