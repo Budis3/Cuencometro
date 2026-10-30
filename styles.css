@@ -77,7 +77,7 @@ body {
   transform: translate(-50%, -50%);
   width: 220px;
   height: 280px;
-  background-color: var(--accent);
+  background-color: #3bb2ffe0;
   -webkit-mask-image: url('casas-colgadas.svg');
   mask-image: url('casas-colgadas.svg');
   -webkit-mask-size: contain;
