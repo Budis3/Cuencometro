@@ -11,8 +11,8 @@
   <!-- Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
-  <!-- Modal Inicial de Entrada / Permisos: Logo y Título ENCIMA del div -->
-  <div id="permission-modal" class="modal-overlay">
+  <!-- Modal Inicial de Entrada / Permisos (Fondo 100% Opaco) -->
+  <div id="permission-modal" class="modal-overlay modal-opaque">
     
     <!-- Bloque de Identidad de Marca situado ENCIMA de la tarjeta -->
     <div class="brand-hero-standalone">
@@ -33,8 +33,8 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración Translúcido con Degradado -->
-  <div id="calibration-modal" class="modal-overlay modal-calibration-overlay" style="display: none;">
+  <!-- Modal de Calibración (Fondo 100% Opaco, cero transparencias a la brújula) -->
+  <div id="calibration-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
       <h1>Calibrar Brújula</h1>
@@ -50,16 +50,16 @@
   </div>
 
   <!-- Modal de Aviso: Sujetar en vertical en modo AR -->
-  <div id="ar-orientation-modal" class="modal-overlay modal-calibration-overlay" style="display: none;">
+  <div id="ar-orientation-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-phone-tilt">📱</div>
       <h1>Posición Vertical</h1>
-      <p>Para buscar Cuenca con la cámara, sostén el teléfono en posición vertical (modo retrato).</p>
+      <p>Para buscar Cuenca con la cámara, por favor sostén el dispositivo en modo retrato (vertical).</p>
     </div>
   </div>
 
-  <!-- Contenedor General de la Aplicación (Oculto hasta pulsar comenzar) -->
-  <div id="app-container" style="display: none;">
+  <!-- Contenedor General de la Aplicación -->
+  <div id="app-container" class="app-hidden">
 
     <!-- 1. MODO BRÚJULA (PLANO EN LA MANO) -->
     <div id="compass-mode">
@@ -197,6 +197,42 @@
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
 
+    // CONTROL CENTRALIZADO DE VISIBILIDAD DE LA APP
+    function actualizarVisibilidadApp() {
+      const modalInicioVisible = permissionModal.style.display !== 'none';
+      const modalCalibracionVisible = calibrationModal.style.display !== 'none';
+      const modalOrientacionVisible = arOrientationModal.style.display !== 'none';
+
+      if (!appIniciada || modalInicioVisible || modalCalibracionVisible || modalOrientacionVisible) {
+        appContainer.classList.add('app-hidden');
+      } else {
+        appContainer.classList.remove('app-hidden');
+      }
+    }
+
+    // GESTIÓN DE ORIENTACIÓN EN MODO AR (SIN GIROSCOPIO / PANTALLA NATIVA)
+    function checkScreenOrientation() {
+      if (!appIniciada) return;
+
+      // Solo evaluamos el bloqueo cuando estamos en modo cámara/AR
+      if (isVertical) {
+        const isLandscape = window.matchMedia("(orientation: landscape)").matches || 
+                            (window.innerWidth > window.innerHeight);
+
+        if (isLandscape) {
+          arOrientationModal.style.display = 'flex';
+        } else {
+          arOrientationModal.style.display = 'none';
+        }
+      } else {
+        arOrientationModal.style.display = 'none';
+      }
+      actualizarVisibilidadApp();
+    }
+
+    window.addEventListener('resize', checkScreenOrientation);
+    window.addEventListener('orientationchange', checkScreenOrientation);
+
     // SOLICITUD DE PANTALLA COMPLETA
     function requestAppFullscreen() {
       const docEl = document.documentElement;
@@ -281,6 +317,7 @@
           accuracyStatusTag.textContent = "Precisión: Baja";
           accuracyStatusTag.className = "accuracy-low";
           calibrationModal.style.display = "flex";
+          actualizarVisibilidadApp();
         } else if (precisionState === 'high') {
           if (calibrationModal.style.display !== "none") {
             accuracyStatusTag.textContent = "Precisión: Alta";
@@ -291,10 +328,12 @@
                 calibrationModal.style.display = "none";
                 precisionFinalizada = true;
                 transitionToMainTimeout = null;
+                actualizarVisibilidadApp();
               }, 2000);
             }
           } else {
             precisionFinalizada = true;
+            actualizarVisibilidadApp();
           }
         }
       }
@@ -341,7 +380,6 @@
     }
     buildCompassTrack();
 
-    // RUMBO DIRECTO (Ortodrómica)
     function calculateBearing(lat1, lon1, lat2, lon2) {
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
@@ -354,7 +392,6 @@
       return (θ * 180 / Math.PI + 360) % 360;
     }
 
-    // DISTANCIA HAVERSINE
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -365,7 +402,6 @@
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // CÁMARA TRASERA
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -379,7 +415,6 @@
       }
     }
 
-    // ORIENTACIÓN (LÓGICA PRINCIPAL)
     function handleOrientation(e) {
       let rawHeading = null;
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -394,23 +429,8 @@
       currentHeading = rawHeading;
 
       const beta = Math.abs(e.beta || 0);
-      const gamma = Math.abs(e.gamma || 0);
-
       const wasVertical = isVertical;
-      // Se considera vertical si está levantado frente al usuario (beta > 45)
       isVertical = beta > 45;
-
-      // MODAL DE AVISO SOLO EN MODO AR SI ESTÁ INCLINADO DE LADO
-      if (appIniciada && isVertical) {
-        // En vertical frente a los ojos, si gamma > 45 el teléfono está apaisado/de lado
-        if (gamma > 45) {
-          arOrientationModal.style.display = 'flex';
-        } else {
-          arOrientationModal.style.display = 'none';
-        }
-      } else {
-        arOrientationModal.style.display = 'none';
-      }
 
       if (isVertical !== wasVertical) {
         if (isVertical) {
@@ -424,13 +444,13 @@
           video.style.display = "none";
           reticleToggleWrapper.style.display = "none";
         }
+        checkScreenOrientation();
       }
 
       actualizarVista();
     }
 
     function actualizarVista() {
-      // 1. MODO HORIZONTAL
       compassDial.style.transform = `rotate(${-currentHeading}deg)`;
       const needleAngle = (bearingToCuenca - currentHeading + 360) % 360;
       cuencaNeedle.style.transform = `rotate(${needleAngle}deg)`;
@@ -465,7 +485,6 @@
         arGuidanceText.classList.remove('on-target');
       }
 
-      // 2. MODO AR
       const baseTrackOffset = 1440; 
       const trackShift = -(baseTrackOffset + (currentHeading * PX_PER_DEG));
       arCompassTrack.style.transform = `translateX(${trackShift}px)`;
@@ -480,13 +499,11 @@
         arCuencaTargetPin.classList.remove('aligned');
       }
 
-      // 3. BARRA INFERIOR
       debugHeading.textContent = `${Math.round(currentHeading)}°`;
       debugCuenca.textContent = `${Math.round(bearingToCuenca)}°`;
       debugDiff.textContent = `${Math.abs(Math.round(diff))}° ${diff > 0 ? 'der. ➡️' : 'izq. ⬅️'}`;
     }
 
-    // GPS
     function initGPS() {
       if (!navigator.geolocation) {
         alert("Geolocalización no soportada.");
@@ -522,13 +539,14 @@
       requestAppFullscreen();
 
       permissionModal.style.display = 'none';
-      appContainer.style.display = 'flex'; // La brújula y la app solo se muestran tras hacer clic
       appIniciada = true;
+      actualizarVisibilidadApp();
 
       if (precisionState === 'low') {
         accuracyStatusTag.textContent = "Precisión: Baja";
         accuracyStatusTag.className = "accuracy-low";
         calibrationModal.style.display = "flex";
+        actualizarVisibilidadApp();
       }
 
       initGPS();
@@ -554,7 +572,6 @@
       }
     });
 
-    // ALTERNAR RETÍCULO
     toggleReticleBtn.addEventListener('click', () => {
       if (reticleMode === 'casas') {
         reticleMode = 'circle';
