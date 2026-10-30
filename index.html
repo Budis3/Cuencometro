@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración -->
+  <!-- Modal de Calibración (Fondo 100% Opaco) -->
   <div id="calibration-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
@@ -47,7 +47,7 @@
     <div class="modal-card modal-calibration-card">
       <div class="icon-phone-tilt">📱</div>
       <h1>Sujeta en Vertical</h1>
-      <p>El modo de búsqueda con cámara (AR) requiere que sostengas el teléfono en vertical.</p>
+      <p>Para buscar Cuenca con la cámara, por favor sostén el dispositivo en modo vertical.</p>
     </div>
   </div>
 
@@ -144,10 +144,8 @@
     const PX_PER_DEG = 4;
     let wasAlignedLastFrame = false;
 
-    // Detección de plataforma
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isAndroid = /Android/.test(navigator.userAgent);
 
     let precisionState = 'low';
     let appIniciada = false;
@@ -187,7 +185,7 @@
     const debugCuenca = document.getElementById('debug-cuenca');
     const debugDiff = document.getElementById('debug-diff');
 
-    // CONTROL TOTAL DE VISIBILIDAD DE INTERFAZ
+    // CONTROL CENTRALIZADO DE VISIBILIDAD (Brújula oculta hasta que todo esté listo)
     function actualizarVisibilidadApp() {
       const modalInicioVisible = permissionModal.style.display !== 'none';
       const modalCalibracionVisible = calibrationModal.style.display !== 'none';
@@ -200,7 +198,6 @@
       }
     }
 
-    // PANTALLA COMPLETA
     function requestAppFullscreen() {
       const docEl = document.documentElement;
       if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
@@ -208,7 +205,6 @@
       else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
     }
 
-    // INSTRUCCIONES DE CALIBRACIÓN
     function setupInstructionsText() {
       if (isIOS) {
         calibrationInstructions.innerHTML = `
@@ -230,7 +226,6 @@
     }
     setupInstructionsText();
 
-    // EVALUACIÓN DE PRECISIÓN MAGNÉTICA
     function evaluarPrecisionReal(event, rawHeading) {
       totalSamples++;
       let isAccurate = false;
@@ -290,25 +285,20 @@
       }
     }
 
-    // DISCRIMINACIÓN MEDIANTE VECTOR DE GRAVEDAD FÍSICA
-    function handleDeviceMotion(e) {
-      if (!appIniciada) return;
+    // DISCRIMINACIÓN RIGUROSA: PLANO vs AR vs APAISADO
+    function evaluarPosturaYModo(beta, gamma) {
+      const bRad = (beta * Math.PI) / 180;
+      const gRad = (gamma * Math.PI) / 180;
 
-      // Obtenemos la gravedad pura del acelerómetro
-      const g = e.accelerationIncludingGravity;
-      if (!g || g.x === null || g.y === null || g.z === null) return;
+      // Vector normal perpendicular a la pantalla: n = [sin(gamma), -sin(beta)*cos(gamma), cos(beta)*cos(gamma)]
+      // El componente vertical respecto a la gravedad terrestre es:
+      const cosInclinacion = Math.abs(Math.cos(bRad) * Math.cos(gRad));
+      const anguloElevacionSuelo = Math.acos(Math.min(1, Math.max(0, cosInclinacion))) * (180 / Math.PI);
 
-      const gx = g.x;
-      const gy = g.y;
-      const gz = Math.abs(g.z); // Z positivo tanto mirando arriba como ligeramente invertido
+      // 1. REGLA 1: Solo es MODO BRÚJULA si está plano en paralelo al suelo (elevación <= 28°)
+      const esPlanoEnSuelo = anguloElevacionSuelo <= 28;
 
-      // 1. CONDICIÓN MATEMÁTICA DE "PLANO / PARALELO AL SUELO":
-      // Cuando está en la mano paralelo al suelo, gz absorbe casi los 9.8 m/s2.
-      // Umbral estricto: gz > 8.0 m/s2 significa plano (máximo ~35° de inclinación respecto al suelo).
-      const isFlatOnTable = gz > 8.0;
-
-      if (isFlatOnTable) {
-        // MODO BRÚJULA
+      if (esPlanoEnSuelo) {
         if (currentMode !== 'compass') {
           currentMode = 'compass';
           compassMode.style.display = "flex";
@@ -316,10 +306,10 @@
           video.style.display = "none";
           reticleToggleWrapper.style.display = "none";
         }
-        // En plano, el aviso de apaisado NUNCA debe mostrarse
+        // En la palma de la mano NUNCA hay aviso de rotación
         arOrientationModal.style.display = "none";
       } else {
-        // MODO AR / CÁMARA (Cualquier posición donde no esté plano)
+        // 2. REGLA 2: Para cualquier otra elevación (> 28°), se activa MODO AR
         if (currentMode !== 'ar') {
           currentMode = 'ar';
           compassMode.style.display = "none";
@@ -328,12 +318,17 @@
           reticleToggleWrapper.style.display = "flex";
         }
 
-        // 2. DISCRIMINACIÓN EN MODO AR: ¿VERTICAL O APAISADO?
-        // En el plano de la pantalla, si el teléfono se gira de lado horizontalmente,
-        // la gravedad actúa con más fuerza sobre el eje X que sobre el eje Y (|gx| > |gy|).
-        const isLandscapeInAR = Math.abs(gx) > Math.abs(gy);
+        // 3. REGLA 3: En MODO AR, verificar si está apaisado (landscape)
+        // Cuando levantas el móvil, si está en vertical domina beta (|beta| > |gamma| + 10).
+        // Si lo giras de lado como una cámara de cine, domina gamma (|gamma| > |beta|).
+        const absBeta = Math.abs(beta);
+        const absGamma = Math.abs(gamma);
 
-        if (isLandscapeInAR) {
+        // Además verificamos la relación de aspecto de la pantalla si el sistema rota
+        const screenIsLandscape = window.innerWidth > window.innerHeight;
+        const posturaApaisada = (absGamma > absBeta) || screenIsLandscape;
+
+        if (posturaApaisada) {
           arOrientationModal.style.display = "flex";
         } else {
           arOrientationModal.style.display = "none";
@@ -343,7 +338,6 @@
       actualizarVisibilidadApp();
     }
 
-    // LECTURA DE RUMBO
     function handleOrientation(e) {
       let rawHeading = null;
       if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -353,8 +347,13 @@
       }
 
       evaluarPrecisionReal(e, rawHeading);
-      if (rawHeading === null) return;
-      currentHeading = rawHeading;
+      if (rawHeading !== null) {
+        currentHeading = rawHeading;
+      }
+
+      const beta = e.beta || 0;
+      const gamma = e.gamma || 0;
+      evaluarPosturaYModo(beta, gamma);
 
       actualizarVista();
     }
@@ -507,26 +506,14 @@
       initGPS();
       await startCamera();
 
-      // Registro de sensor de movimiento (Acelerómetro / Gravedad)
-      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-          const motionRes = await DeviceMotionEvent.requestPermission();
-          if (motionRes === 'granted') {
-            window.addEventListener('devicemotion', handleDeviceMotion, true);
-          }
-        } catch (e) {
-          console.warn("Permiso de acelerómetro omitido:", e);
-        }
-      } else {
-        window.addEventListener('devicemotion', handleDeviceMotion, true);
-      }
-
-      // Registro de sensor de orientación (Brújula)
+      // Registro de orientación con fallback absoluto
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const res = await DeviceOrientationEvent.requestPermission();
           if (res === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation, true);
+          } else {
+            alert('Permiso denegado para la orientación.');
           }
         } catch (err) {
           console.error(err);
@@ -552,6 +539,10 @@
         casasReticle.style.display = 'block';
         reticleIcon.textContent = "⭕";
       }
+    });
+
+    window.addEventListener('resize', () => {
+      if (appIniciada) actualizarVisibilidadApp();
     });
   </script>
 </body>
