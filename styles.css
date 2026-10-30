@@ -50,32 +50,33 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   transition: opacity 0.3s ease;
 }
 
 .modal-card {
-  background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
-  padding: 2.2rem 1.6rem;
-  max-width: 360px;
+  padding: 2rem 1.6rem;
+  max-width: 380px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
 }
 
 .icon-cuenca {
-  font-size: 3rem;
-  margin-bottom: 0.8rem;
+  font-size: 2.8rem;
+  margin-bottom: 0.6rem;
 }
 
 .modal-card h1 {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   font-weight: 700;
   margin-bottom: 0.6rem;
   letter-spacing: -0.02em;
@@ -83,18 +84,49 @@ body {
 
 .modal-card p {
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.45;
-  margin-bottom: 1.4rem;
+  margin-bottom: 1rem;
 }
 
 .modal-card strong {
   color: #fff;
 }
 
+/* LISTAS DE INSTRUCCIONES ESPECÍFICAS DE CALIBRACIÓN */
+.calibration-instructions-text {
+  text-align: left;
+  width: 100%;
+  margin-bottom: 1.2rem;
+}
+
+.calibration-instructions-text p {
+  text-align: center;
+  margin-bottom: 0.8rem;
+}
+
+.calibration-steps {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.calibration-steps li strong {
+  color: #fff;
+}
+
+.calibration-steps em {
+  color: #93c5fd;
+  font-style: normal;
+}
+
 /* CAJA Y ETIQUETA DINÁMICA DE PRECISIÓN */
 .accuracy-indicator-box {
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -105,25 +137,25 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.45rem 1.2rem;
+  padding: 0.5rem 1.3rem;
   border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.5);
-  transition: color 0.25s, border-color 0.25s, box-shadow 0.25s;
+  background: rgba(0, 0, 0, 0.55);
+  transition: all 0.3s ease;
 }
 
 /* Estado: Precisión Baja en Rojo */
 #accuracy-status-tag.accuracy-low {
   color: var(--danger);
-  border: 1.5px solid rgba(239, 68, 68, 0.6);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+  border: 1.5px solid rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
-/* Estado: Precisión Alta en Verde con Glow */
+/* Estado: Precisión Alta en Verde con Glow Neón */
 #accuracy-status-tag.accuracy-high {
   color: var(--success);
-  border: 1.5px solid rgba(16, 185, 129, 0.8);
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.85), inset 0 0 10px rgba(16, 185, 129, 0.35);
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+  border: 1.5px solid rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.9), inset 0 0 10px rgba(16, 185, 129, 0.4);
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
 }
 
 .btn-primary {
@@ -355,7 +387,6 @@ body {
   mask-image: linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%);
 }
 
-/* Línea central fija de rumbo */
 .ar-center-indicator {
   position: absolute;
   top: 0;
@@ -368,7 +399,6 @@ body {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
 }
 
-/* Triángulo indicador de Cuenca sobre la cinta */
 .ar-cuenca-target-pin {
   position: absolute;
   top: 1px;
@@ -389,7 +419,6 @@ body {
   filter: drop-shadow(0 0 10px var(--success));
 }
 
-/* Cinta deslizante graduada */
 .ar-compass-track {
   position: absolute;
   left: 50%;
