@@ -1,11 +1,11 @@
-const CACHE_NAME = 'cuenca-finder-v2';
+const CACHE_NAME = 'cuenca-finder-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './manifest.json',
-  './logo.png',
+  './manifest.json?v=2',
+  './logo.png?v=2',
   './casas-colgadas.svg'
 ];
 
