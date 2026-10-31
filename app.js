@@ -28,7 +28,7 @@ const isAndroid = /Android/.test(navigator.userAgent);
 // Control de calibración y precisión
 let precisionState = 'low';
 let appIniciada = false;
-let precisionFinalizada = false;
+let precisionFinalizada = isIOS; // En iOS se marca como finalizada de inicio
 let transitionToMainTimeout = null;
 
 const headingHistory = [];
@@ -83,18 +83,9 @@ function requestAppFullscreen() {
   else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
 }
 
-// Instrucciones según sistema operativo
+// Instrucciones para Android / Otros (en iOS el modal no saltará)
 function setupInstructionsText() {
-  if (isIOS) {
-    calibrationInstructions.innerHTML = `
-      <p>La brújula de tu <strong>iPhone</strong> detecta interferencias magnéticas.</p>
-      <ol class="calibration-steps">
-        <li>Mueve el iPhone dibujando un <strong>«8» amplio en el aire</strong>.</li>
-        <li>Aléjate de <strong>fundas con imanes (MagSafe)</strong> o piezas metálicas.</li>
-        <li>Si no sube la precisión, entra en: <em>Ajustes &gt; Privacidad &gt; Localización &gt; Servicios del sistema</em> y verifica que <strong>Calibración de la brújula</strong> esté activada.</li>
-      </ol>
-    `;
-  } else if (isAndroid) {
+  if (isAndroid) {
     calibrationInstructions.innerHTML = `
       <p>El sensor magnético de tu <strong>Android</strong> requiere calibración.</p>
       <ol class="calibration-steps">
@@ -111,42 +102,29 @@ function setupInstructionsText() {
 }
 setupInstructionsText();
 
-// EVALUACIÓN DE PRECISIÓN COMPATIBLE CON IOS Y ANDROID
+// EVALUACIÓN DE PRECISIÓN (DESACTIVADA PARA IOS)
 function evaluarPrecisionReal(event, rawHeading) {
-  if (precisionFinalizada) return;
+  // En iOS no se muestra ni se evalúa el modal de precisión
+  if (isIOS || precisionFinalizada) return;
 
   totalSamples++;
   let isAccurate = false;
 
-  if (isIOS) {
-    const acc = event.webkitCompassAccuracy;
-    // Si iOS da un valor explícito de precisión fiable
-    if (typeof acc !== 'undefined' && acc !== null && acc >= 0 && acc <= 35) {
-      isAccurate = true;
-    } else if (rawHeading !== null && typeof event.webkitCompassHeading !== 'undefined') {
-      // En iOS Safari, cuando acc es -1 pero el sensor entrega rumbo activo:
-      // tras recibir unas pocas muestras estables consideramos que el sensor está operativo
-      if (totalSamples > 8) {
-        isAccurate = true;
-      }
+  if (event.absolute === true && rawHeading !== null) {
+    headingHistory.push(rawHeading);
+    if (headingHistory.length > HISTORY_SIZE) {
+      headingHistory.shift();
     }
-  } else {
-    if (event.absolute === true && rawHeading !== null) {
-      headingHistory.push(rawHeading);
-      if (headingHistory.length > HISTORY_SIZE) {
-        headingHistory.shift();
-      }
 
-      if (headingHistory.length >= HISTORY_SIZE && totalSamples > 15) {
-        let maxDiff = 0;
-        for (let i = 1; i < headingHistory.length; i++) {
-          let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
-          if (d > 180) d = 360 - d;
-          if (d > maxDiff) maxDiff = d;
-        }
-        if (maxDiff < 30) {
-          isAccurate = true;
-        }
+    if (headingHistory.length >= HISTORY_SIZE && totalSamples > 15) {
+      let maxDiff = 0;
+      for (let i = 1; i < headingHistory.length; i++) {
+        let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
+        if (d > 180) d = 360 - d;
+        if (d > maxDiff) maxDiff = d;
+      }
+      if (maxDiff < 30) {
+        isAccurate = true;
       }
     }
   }
@@ -179,8 +157,10 @@ function evaluarPrecisionReal(event, rawHeading) {
   }
 }
 
-// Evaluación pasiva previa al inicio
+// Evaluación pasiva previa al inicio (solo no-iOS)
 function iniciarEvaluacionPasiva() {
+  if (isIOS) return;
+
   const handlerPasivo = (e) => {
     let h = null;
     if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -425,8 +405,8 @@ startBtn.addEventListener('click', async () => {
   appIniciada = true;
   actualizarVisibilidadApp();
 
-  // Si no estaba pre-calibrada, muestra el modal de calibración
-  if (!precisionFinalizada && precisionState === 'low') {
+  // En Android se muestra el modal solo si no estaba pre-calibrada
+  if (!isIOS && !precisionFinalizada && precisionState === 'low') {
     accuracyStatusTag.textContent = "Precisión: Baja";
     accuracyStatusTag.className = "accuracy-low";
     calibrationModal.style.display = "flex";
