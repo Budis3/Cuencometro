@@ -29,6 +29,113 @@ body {
   position: relative;
 }
 
+/* BANNER DE INSTALACIÓN PWA */
+.pwa-banner {
+  position: fixed;
+  top: env(safe-area-inset-top, 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 440px;
+  background: rgba(24, 34, 53, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  z-index: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 15px rgba(59, 130, 246, 0.25);
+  animation: bannerSlideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.pwa-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.pwa-banner-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: contain;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.pwa-banner-texts {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pwa-banner-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-banner-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.pwa-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pwa-btn-install {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.pwa-btn-install:active {
+  transform: scale(0.94);
+}
+
+.pwa-btn-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* VÍDEO DE CÁMARA TRASERA */
 #camera-video {
   position: absolute;
@@ -58,25 +165,23 @@ body {
   background: #0b0f19 !important;
 }
 
-/* BLOQUE DE MARCA STANDALONE */
+/* CABECERA DE MARCA */
 .brand-hero-standalone {
   position: relative;
   width: 100%;
   max-width: 380px;
-  min-height: 230px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
-  overflow: visible;
-  animation: heroEntrance 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  margin-bottom: 1.2rem;
+  animation: heroEntrance 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes heroEntrance {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -84,45 +189,22 @@ body {
   }
 }
 
-.brand-bg-silhouette {
-  position: absolute;
-  top: 48%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 220px;
-  height: 280px;
-  background-color: #3bb2ffe0;
-  -webkit-mask-image: url('casas-colgadas.svg');
-  mask-image: url('casas-colgadas.svg');
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  opacity: 0.16;
-  filter: drop-shadow(0 0 25px var(--accent-glow));
-  pointer-events: none;
-  z-index: 1;
-  animation: silhouetteBreathingSlow 10s ease-in-out infinite alternate;
+.brand-logo-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 0.8rem;
+  filter: drop-shadow(0 0 20px var(--accent-glow));
+  animation: logoPulse 4s infinite alternate ease-in-out;
 }
 
-@keyframes silhouetteBreathingSlow {
-  0% {
-    opacity: 0.12;
-    transform: translate(-50%, -50%) scale(0.985);
-    filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.25));
-  }
-  100% {
-    opacity: 0.20;
-    transform: translate(-50%, -50%) scale(1.02);
-    filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.5));
-  }
+@keyframes logoPulse {
+  0% { transform: scale(0.98); filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.35)); }
+  100% { transform: scale(1.03); filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.7)); }
 }
 
 .brand-badge-pill {
   position: relative;
-  z-index: 2;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -132,18 +214,17 @@ body {
   border: 1px solid rgba(147, 197, 253, 0.28);
   padding: 0.3rem 0.85rem;
   border-radius: 9999px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
 }
 
 .brand-title {
   position: relative;
-  z-index: 2;
-  font-size: 3.75rem;
+  font-size: 3.2rem;
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.04em;
   color: #ffffff;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.95), 0 0 20px rgba(59, 130, 246, 0.45);
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
   margin: 0;
   text-align: center;
 }
@@ -166,29 +247,17 @@ body {
   flex-direction: column;
   align-items: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
-  animation: cardEntrance 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
-}
-
-@keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .landing-card {
-  padding: 1.8rem 1.6rem;
+  padding: 1.6rem 1.5rem;
 }
 
 .landing-description {
-  font-size: 0.94rem;
+  font-size: 0.92rem;
   line-height: 1.45;
   color: var(--text-muted);
-  margin-bottom: 1.6rem;
+  margin-bottom: 1.4rem;
   text-align: center;
 }
 
@@ -205,38 +274,18 @@ body {
   align-items: center;
   gap: 0.5rem;
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
-  transition: transform 0.3s ease, box-shadow 0.4s ease, filter 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 50%;
-  height: 200%;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transform: rotate(25deg);
-  animation: btnShineUltraSlow 9s infinite ease-in-out;
-}
-
-@keyframes btnShineUltraSlow {
-  0%, 80% { left: -60%; }
-  100% { left: 140%; }
+  transition: transform 0.2s ease;
 }
 
 .btn-primary:active {
   transform: scale(0.97);
-  filter: brightness(0.92);
 }
 
 .btn-landing {
   width: 100%;
   justify-content: center;
   font-size: 1.05rem;
-  padding: 1rem 1.6rem;
+  padding: 0.95rem 1.6rem;
 }
 
 .modal-calibration-card {
@@ -248,12 +297,6 @@ body {
 .icon-cuenca {
   font-size: 2.8rem;
   margin-bottom: 0.6rem;
-  animation: floatIconSlow 6s ease-in-out infinite;
-}
-
-@keyframes floatIconSlow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
 }
 
 .modal-card h1 {
@@ -261,17 +304,6 @@ body {
   font-weight: 700;
   margin-bottom: 0.6rem;
   letter-spacing: -0.02em;
-}
-
-.modal-card p {
-  color: var(--text-muted);
-  font-size: 0.92rem;
-  line-height: 1.45;
-  margin-bottom: 1rem;
-}
-
-.modal-card strong {
-  color: #fff;
 }
 
 .calibration-instructions-text {
@@ -283,6 +315,8 @@ body {
 .calibration-instructions-text p {
   text-align: center;
   margin-bottom: 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .calibration-steps {
@@ -319,37 +353,21 @@ body {
   padding: 0.5rem 1.3rem;
   border-radius: 9999px;
   background: rgba(0, 0, 0, 0.55);
-  transition: all 0.5s ease;
 }
 
 #accuracy-status-tag.accuracy-low {
   color: var(--danger);
   border: 1.5px solid rgba(239, 68, 68, 0.7);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
-  animation: pulseAlertSlow 4s infinite ease-in-out;
-}
-
-@keyframes pulseAlertSlow {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
 }
 
 #accuracy-status-tag.accuracy-high {
   color: var(--success);
   border: 1.5px solid rgba(16, 185, 129, 0.9);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.9), inset 0 0 10px rgba(16, 185, 129, 0.4);
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
-  animation: highSuccessGlowSlow 3.5s infinite alternate ease-in-out;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.9);
 }
 
-@keyframes highSuccessGlowSlow {
-  0% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.5); }
-  100% { box-shadow: 0 0 24px rgba(16, 185, 129, 0.9); }
-}
-
-/* ============================================================
-   CONTENEDOR DE LA APLICACIÓN
-   ============================================================ */
+/* CONTENEDOR GENERAL */
 #app-container {
   position: relative;
   width: 100%;
@@ -360,7 +378,6 @@ body {
   pointer-events: none;
   visibility: visible;
   opacity: 1;
-  transition: opacity 0.4s ease;
 }
 
 #app-container.app-hidden {
@@ -377,7 +394,6 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  transition: opacity 0.5s ease;
   position: relative;
 }
 
@@ -388,13 +404,12 @@ body {
   letter-spacing: 0.06em;
   color: var(--text-muted);
   margin-bottom: 0.8rem;
-  transition: color 0.5s ease, transform 0.5s ease;
+  transition: color 0.4s ease;
 }
 
 .target-status-banner.aligned {
   color: var(--success);
   text-shadow: 0 0 14px rgba(16, 185, 129, 0.7);
-  transform: scale(1.04);
 }
 
 .fixed-top-triangle {
@@ -404,13 +419,11 @@ body {
   border-right: 12px solid transparent;
   border-top: 22px solid rgba(255, 255, 255, 0.35);
   margin-bottom: 0.6rem;
-  transition: border-top-color 0.4s ease, filter 0.4s ease, transform 0.4s ease;
 }
 
 .fixed-top-triangle.aligned {
   border-top-color: var(--success);
   filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.9));
-  transform: translateY(2px) scale(1.06);
 }
 
 .compass-container {
@@ -430,14 +443,13 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.15);
   background: radial-gradient(circle, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
   box-shadow: 0 0 35px rgba(0, 0, 0, 0.5);
-  transition: border-color 0.5s ease;
 }
 
 .compass-dial {
   position: absolute;
   width: 100%;
   height: 100%;
-  transition: transform 0.15s ease-out;
+  transition: none;
 }
 
 .dial-mark {
@@ -480,7 +492,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.15s ease-out;
+  transition: none;
 }
 
 .needle-shape {
@@ -498,7 +510,6 @@ body {
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
   border-bottom: 90px solid #ef4444;
-  transition: border-bottom-color 0.4s ease, filter 0.4s ease;
 }
 
 .needle-tail {
@@ -518,7 +529,6 @@ body {
   height: 22px;
   background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
   border: 3px solid #1e293b;
   z-index: 10;
 }
@@ -542,7 +552,7 @@ body {
   margin-top: 0.25rem;
 }
 
-/* 2. MODO CÁMARA */
+/* 2. MODO AR */
 #ar-mode {
   flex: 1;
   display: none;
@@ -578,7 +588,6 @@ body {
   background: #ffffff;
   transform: translateX(-50%);
   z-index: 10;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
 }
 
 .ar-cuenca-target-pin {
@@ -592,8 +601,6 @@ body {
   border-top: 14px solid var(--danger);
   transform: translateX(-50%);
   z-index: 12;
-  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.7));
-  transition: border-top-color 0.4s ease, filter 0.4s ease;
 }
 
 .ar-cuenca-target-pin.aligned {
@@ -633,7 +640,6 @@ body {
   height: 18px;
   background: rgba(255, 255, 255, 0.95);
   width: 2px;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
 
 .tick-label {
@@ -641,7 +647,6 @@ body {
   font-weight: 700;
   margin-top: 2px;
   color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .ar-reticle-container {
@@ -665,39 +670,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 10px rgba(239, 68, 68, 0.2);
-  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
 }
 
 .target-cross-circle.on-target {
   border-color: var(--success);
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.95), inset 0 0 15px rgba(16, 185, 129, 0.4);
-  transform: scale(1.05);
-  animation: radarEchoUltraSlow 4.5s infinite ease-out;
-}
-
-@keyframes radarEchoUltraSlow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75), inset 0 0 10px rgba(16, 185, 129, 0.4);
-  }
-  60% {
-    box-shadow: 0 0 0 26px rgba(16, 185, 129, 0), inset 0 0 15px rgba(16, 185, 129, 0.4);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0), inset 0 0 15px rgba(16, 185, 129, 0.4);
-  }
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.95);
 }
 
 .cross-line {
   position: absolute;
   background-color: var(--danger);
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-  transition: background-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .target-cross-circle.on-target .cross-line {
   background-color: var(--success);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
 }
 
 .cross-line.top {
@@ -736,19 +722,10 @@ body {
   width: 108px;
   height: 137px;
   display: block;
-  filter: none;
-  transition: filter 0.4s ease, transform 0.4s ease;
 }
 
 .target-casas-glow-wrapper.on-target {
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 25px rgba(16, 185, 129, 0.85));
-  transform: scale(1.05);
-  animation: casasTargetPulseUltraSlow 4.5s infinite alternate ease-in-out;
-}
-
-@keyframes casasTargetPulseUltraSlow {
-  0% { transform: scale(1.03); }
-  100% { transform: scale(1.08); }
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.95));
 }
 
 .target-casas-shape {
@@ -763,7 +740,6 @@ body {
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
-  transition: background-color 0.35s ease;
 }
 
 .target-casas-glow-wrapper.on-target .target-casas-shape {
@@ -777,22 +753,15 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   padding: 0.6rem 1.6rem;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   white-space: nowrap;
-  max-width: 90vw;
-  text-align: center;
-  transition: border-color 0.4s, color 0.4s, box-shadow 0.4s, transform 0.4s;
 }
 
 .ar-status-text.on-target {
   border-color: rgba(16, 185, 129, 0.6);
   color: var(--success);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45);
-  transform: scale(1.04);
 }
 
 .ar-reticle-toggle-wrapper {
@@ -813,8 +782,6 @@ body {
   line-height: 1.15;
   text-align: center;
   color: var(--text);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  letter-spacing: 0.02em;
 }
 
 .btn-toggle-round {
@@ -822,8 +789,6 @@ body {
   height: 64px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.25);
   color: #fff;
   font-size: 1.75rem;
@@ -831,14 +796,6 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s, border-color 0.3s;
-}
-
-.btn-toggle-round:active {
-  transform: scale(0.92) rotate(-8deg);
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .bottom-info {
@@ -850,8 +807,6 @@ body {
   justify-content: space-around;
   align-items: center;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 20;
 }
@@ -861,32 +816,36 @@ body {
   color: #fff;
 }
 
-/* ============================================================
-   ADAPTACIÓN RESPONSIVE PARA MODO APAISADO (LANDSCAPE)
-   ============================================================ */
+/* RESPONSIVE LANDSCAPE */
 @media screen and (orientation: landscape) and (max-height: 520px) {
-  /* Landing inicial en landscape */
+  .pwa-banner {
+    top: 6px;
+    padding: 0.45rem 0.8rem;
+    max-width: 90vw;
+  }
+  .pwa-banner-icon {
+    width: 32px;
+    height: 32px;
+  }
   .brand-hero-standalone {
-    min-height: 130px;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+  .brand-logo-img {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 0.3rem;
   }
   .brand-title {
-    font-size: 2.6rem;
-  }
-  .brand-bg-silhouette {
-    width: 140px;
-    height: 180px;
+    font-size: 2.2rem;
   }
   .modal-card {
-    padding: 1.2rem 1.4rem;
+    padding: 1rem 1.4rem;
     max-width: 480px;
   }
   .landing-description {
     font-size: 0.85rem;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.8rem;
   }
-
-  /* Modo AR en apaisado */
   #ar-mode {
     padding-top: 0.8rem;
   }
@@ -910,8 +869,6 @@ body {
     font-size: 0.82rem;
     padding: 0.4rem 1.2rem;
   }
-
-  /* Botón de cambio de mira en apaisado: tamaño compacto en esquina */
   .ar-reticle-toggle-wrapper {
     right: 1.5rem;
     bottom: 3.4rem;
@@ -925,8 +882,6 @@ body {
     height: 48px;
     font-size: 1.3rem;
   }
-
-  /* Brújula en apaisado (por si se pone plano en landscape) */
   .compass-container {
     width: 180px;
     height: 180px;
