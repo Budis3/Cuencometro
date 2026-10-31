@@ -20,7 +20,7 @@ let smoothedCos = 1;
 const SMOOTHING_FACTOR = 0.18;
 let isFirstHeadingSample = true;
 
-// Detección fiable de plataforma (incluye iPhones/iPads modernos que se identifican como Mac)
+// Detección de plataforma
 const isIOS = (function () {
   const ua = navigator.userAgent || navigator.vendor || window.opera || '';
   const isAppleTouch = (/iPad|iPhone|iPod/.test(ua)) || 
@@ -30,12 +30,17 @@ const isIOS = (function () {
                               typeof DeviceOrientationEvent.requestPermission === 'function';
   return isAppleTouch || hasIOSPermissionAPI;
 })();
+
 const isAndroid = /Android/.test(navigator.userAgent);
+
+// Detección de si la app ya está abierta como PWA instalada (Standalone)
+const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
 
 // Control de calibración y precisión
 let precisionState = isIOS ? 'high' : 'low';
 let appIniciada = false;
-let precisionFinalizada = isIOS; // En iOS se obvia el modal de calibración
+let precisionFinalizada = isIOS;
 let transitionToMainTimeout = null;
 
 const headingHistory = [];
@@ -69,6 +74,61 @@ const arGuidanceText = document.getElementById('ar-guidance-text');
 const debugHeading = document.getElementById('debug-heading');
 const debugCuenca = document.getElementById('debug-cuenca');
 const debugDiff = document.getElementById('debug-diff');
+
+// Elementos del Banner PWA
+const pwaInstallBanner = document.getElementById('pwa-install-banner');
+const pwaInstallActionBtn = document.getElementById('pwa-install-action-btn');
+const pwaDismissBtn = document.getElementById('pwa-dismiss-btn');
+const pwaBannerDesc = document.getElementById('pwa-banner-desc');
+
+let deferredPrompt = null;
+
+// ============================================================
+// GESTIÓN DEL AVISO DE INSTALACIÓN PWA
+// ============================================================
+function setupPwaInstallBanner() {
+  // Si ya está abierta como app instalada, no mostramos nada
+  if (isRunningStandalone) return;
+
+  // En Android / Navegadores Chromium: Interceptamos el evento nativo
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    pwaInstallBanner.style.display = 'flex';
+  });
+
+  // En iOS Safari / Chrome iOS: Mostramos instrucciones contextuales
+  if (isIOS) {
+    pwaBannerDesc.innerHTML = 'Pulsa <strong>Compartir ⎋</strong> y luego <strong>«Añadir a inicio ⊞»</strong>.';
+    pwaInstallActionBtn.textContent = 'Ver cómo';
+    
+    // Mostramos el banner pasados 1.5s
+    setTimeout(() => {
+      pwaInstallBanner.style.display = 'flex';
+    }, 1500);
+  }
+
+  // Clic en el botón principal del banner
+  pwaInstallActionBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      // Disparo del popup nativo en Android
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        pwaInstallBanner.style.display = 'none';
+      }
+      deferredPrompt = null;
+    } else if (isIOS) {
+      alert('Para instalar en iPhone:\n\n1. Toca el botón de Compartir (el cuadrado con la flecha hacia arriba en Safari/Chrome).\n2. Baja y pulsa «Añadir a pantalla de inicio».');
+    }
+  });
+
+  // Botón para cerrar el banner
+  pwaDismissBtn.addEventListener('click', () => {
+    pwaInstallBanner.style.display = 'none';
+  });
+}
+setupPwaInstallBanner();
 
 // Control de visibilidad
 function actualizarVisibilidadApp() {
@@ -169,7 +229,7 @@ function evaluarPrecisionReal(event, rawHeading) {
   }
 }
 
-// Evaluación pasiva previa (solo en Android/no-iOS para no bloquear WebKit)
+// Evaluación pasiva previa (solo no-iOS)
 function iniciarEvaluacionPasiva() {
   if (isIOS) return;
 
@@ -233,7 +293,7 @@ function getScreenAngle() {
   return 0;
 }
 
-// Lectura de sensores con filtro paso bajo vectorial
+// Lectura de orientación con filtro paso bajo vectorial
 function handleOrientation(e) {
   let rawDeg = null;
 
@@ -409,9 +469,13 @@ function initGPS() {
   );
 }
 
-// Botón de inicio: PRIORIDAD ABSOLUTA a DeviceOrientationEvent.requestPermission()
+// Botón de inicio
 startBtn.addEventListener('click', async () => {
-  // 1. SOLICITAR PERMISOS DE SENSOR DE FORMA INMEDIATA (Crítico para iOS WebKit)
+  // Al pulsar en comenzar, si el banner de instalación sigue visible, se oculta para despejar la vista
+  if (pwaInstallBanner) {
+    pwaInstallBanner.style.display = 'none';
+  }
+
   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const res = await DeviceOrientationEvent.requestPermission();
@@ -424,7 +488,6 @@ startBtn.addEventListener('click', async () => {
       console.error('Error al pedir permisos de orientación:', err);
     }
   } else {
-    // Android / Navegadores estándar
     if ('ondeviceorientationabsolute' in window) {
       window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     } else {
@@ -432,14 +495,12 @@ startBtn.addEventListener('click', async () => {
     }
   }
 
-  // 2. Transición de UI e inicio de subsistemas
   requestAppFullscreen();
 
   permissionModal.style.display = 'none';
   appIniciada = true;
   actualizarVisibilidadApp();
 
-  // En Android se muestra calibración si la precisión inicial es baja
   if (!isIOS && !precisionFinalizada && precisionState === 'low') {
     if (accuracyStatusTag) {
       accuracyStatusTag.textContent = "Precisión: Baja";
@@ -451,7 +512,6 @@ startBtn.addEventListener('click', async () => {
     actualizarVisibilidadApp();
   }
 
-  // 3. Iniciar GPS y cámara tras haber consumido el gesto de orientación
   initGPS();
   await startCamera();
 });
