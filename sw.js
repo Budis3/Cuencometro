@@ -1,14 +1,14 @@
-const CACHE_NAME = 'cuenca-finder-v1';
+const CACHE_NAME = 'cuenca-finder-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.json',
+  './logo.png',
   './casas-colgadas.svg'
 ];
 
-// Instalación y almacenamiento en caché de los recursos estáticos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,7 +17,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activación y limpieza de versiones viejas de caché
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -32,9 +31,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Intercepción de peticiones (estrategia Cache First con fallback a red)
 self.addEventListener('fetch', (event) => {
-  // Ignorar peticiones que no sean GET o esquemas no soportados
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
@@ -43,7 +40,6 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        // Solo cachear respuestas válidas de nuestro propio origen
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
@@ -54,7 +50,6 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       });
     }).catch(() => {
-      // Fallback si no hay red ni caché
       return caches.match('./index.html');
     })
   );
