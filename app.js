@@ -20,15 +20,22 @@ let smoothedCos = 1;
 const SMOOTHING_FACTOR = 0.18;
 let isFirstHeadingSample = true;
 
-// Detección de plataforma
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Detección fiable de plataforma (incluye iPhones/iPads modernos que se identifican como Mac)
+const isIOS = (function () {
+  const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+  const isAppleTouch = (/iPad|iPhone|iPod/.test(ua)) || 
+                       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+                       (navigator.vendor && navigator.vendor.indexOf('Apple') > -1 && 'ontouchend' in document);
+  const hasIOSPermissionAPI = typeof DeviceOrientationEvent !== 'undefined' && 
+                              typeof DeviceOrientationEvent.requestPermission === 'function';
+  return isAppleTouch || hasIOSPermissionAPI;
+})();
 const isAndroid = /Android/.test(navigator.userAgent);
 
 // Control de calibración y precisión
-let precisionState = 'low';
+let precisionState = isIOS ? 'high' : 'low';
 let appIniciada = false;
-let precisionFinalizada = false;
+let precisionFinalizada = isIOS; // En iOS se obvia el modal de calibración
 let transitionToMainTimeout = null;
 
 const headingHistory = [];
@@ -65,8 +72,8 @@ const debugDiff = document.getElementById('debug-diff');
 
 // Control de visibilidad
 function actualizarVisibilidadApp() {
-  const modalInicioVisible = permissionModal.style.display !== 'none';
-  const modalCalibracionVisible = calibrationModal.style.display !== 'none';
+  const modalInicioVisible = permissionModal && permissionModal.style.display !== 'none';
+  const modalCalibracionVisible = !isIOS && calibrationModal && calibrationModal.style.display !== 'none';
 
   if (!appIniciada || modalInicioVisible || modalCalibracionVisible) {
     appContainer.classList.add('app-hidden');
@@ -83,18 +90,11 @@ function requestAppFullscreen() {
   else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen().catch(() => {});
 }
 
-// Instrucciones según sistema operativo
+// Instrucciones para Android / Otros
 function setupInstructionsText() {
-  if (isIOS) {
-    calibrationInstructions.innerHTML = `
-      <p>La brújula de tu <strong>iPhone</strong> detecta interferencias magnéticas.</p>
-      <ol class="calibration-steps">
-        <li>Mueve el iPhone dibujando un <strong>«8» amplio en el aire</strong>.</li>
-        <li>Aléjate de <strong>fundas con imanes (MagSafe)</strong> o piezas metálicas.</li>
-        <li>Si no sube la precisión, entra en: <em>Ajustes &gt; Privacidad &gt; Localización &gt; Servicios del sistema</em> y verifica que <strong>Calibración de la brújula</strong> esté activada.</li>
-      </ol>
-    `;
-  } else if (isAndroid) {
+  if (isIOS || !calibrationInstructions) return;
+
+  if (isAndroid) {
     calibrationInstructions.innerHTML = `
       <p>El sensor magnético de tu <strong>Android</strong> requiere calibración.</p>
       <ol class="calibration-steps">
@@ -111,42 +111,28 @@ function setupInstructionsText() {
 }
 setupInstructionsText();
 
-// EVALUACIÓN DE PRECISIÓN COMPATIBLE CON IOS Y ANDROID
+// EVALUACIÓN DE PRECISIÓN (SOLO ACTIVA EN ANDROID / OTROS)
 function evaluarPrecisionReal(event, rawHeading) {
-  if (precisionFinalizada) return;
+  if (isIOS || precisionFinalizada || !calibrationModal) return;
 
   totalSamples++;
   let isAccurate = false;
 
-  if (isIOS) {
-    const acc = event.webkitCompassAccuracy;
-    // Si iOS da un valor explícito de precisión fiable
-    if (typeof acc !== 'undefined' && acc !== null && acc >= 0 && acc <= 35) {
-      isAccurate = true;
-    } else if (rawHeading !== null && typeof event.webkitCompassHeading !== 'undefined') {
-      // En iOS Safari, cuando acc es -1 pero el sensor entrega rumbo activo:
-      // tras recibir unas pocas muestras estables consideramos que el sensor está operativo
-      if (totalSamples > 8) {
-        isAccurate = true;
-      }
+  if (event.absolute === true && rawHeading !== null) {
+    headingHistory.push(rawHeading);
+    if (headingHistory.length > HISTORY_SIZE) {
+      headingHistory.shift();
     }
-  } else {
-    if (event.absolute === true && rawHeading !== null) {
-      headingHistory.push(rawHeading);
-      if (headingHistory.length > HISTORY_SIZE) {
-        headingHistory.shift();
-      }
 
-      if (headingHistory.length >= HISTORY_SIZE && totalSamples > 15) {
-        let maxDiff = 0;
-        for (let i = 1; i < headingHistory.length; i++) {
-          let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
-          if (d > 180) d = 360 - d;
-          if (d > maxDiff) maxDiff = d;
-        }
-        if (maxDiff < 30) {
-          isAccurate = true;
-        }
+    if (headingHistory.length >= HISTORY_SIZE && totalSamples > 15) {
+      let maxDiff = 0;
+      for (let i = 1; i < headingHistory.length; i++) {
+        let d = Math.abs(headingHistory[i] - headingHistory[i - 1]);
+        if (d > 180) d = 360 - d;
+        if (d > maxDiff) maxDiff = d;
+      }
+      if (maxDiff < 30) {
+        isAccurate = true;
       }
     }
   }
@@ -159,13 +145,17 @@ function evaluarPrecisionReal(event, rawHeading) {
         clearTimeout(transitionToMainTimeout);
         transitionToMainTimeout = null;
       }
-      accuracyStatusTag.textContent = "Precisión: Baja";
-      accuracyStatusTag.className = "accuracy-low";
+      if (accuracyStatusTag) {
+        accuracyStatusTag.textContent = "Precisión: Baja";
+        accuracyStatusTag.className = "accuracy-low";
+      }
       calibrationModal.style.display = "flex";
       actualizarVisibilidadApp();
     } else if (precisionState === 'high') {
-      accuracyStatusTag.textContent = "Precisión: Alta";
-      accuracyStatusTag.className = "accuracy-high";
+      if (accuracyStatusTag) {
+        accuracyStatusTag.textContent = "Precisión: Alta";
+        accuracyStatusTag.className = "accuracy-high";
+      }
 
       if (!transitionToMainTimeout) {
         transitionToMainTimeout = setTimeout(() => {
@@ -179,8 +169,10 @@ function evaluarPrecisionReal(event, rawHeading) {
   }
 }
 
-// Evaluación pasiva previa al inicio
+// Evaluación pasiva previa (solo en Android/no-iOS para no bloquear WebKit)
 function iniciarEvaluacionPasiva() {
+  if (isIOS) return;
+
   const handlerPasivo = (e) => {
     let h = null;
     if (typeof e.webkitCompassHeading !== "undefined" && e.webkitCompassHeading !== null) {
@@ -417,43 +409,51 @@ function initGPS() {
   );
 }
 
-// Botón de inicio
+// Botón de inicio: PRIORIDAD ABSOLUTA a DeviceOrientationEvent.requestPermission()
 startBtn.addEventListener('click', async () => {
-  requestAppFullscreen();
-
-  permissionModal.style.display = 'none';
-  appIniciada = true;
-  actualizarVisibilidadApp();
-
-  // Si no estaba pre-calibrada, muestra el modal de calibración
-  if (!precisionFinalizada && precisionState === 'low') {
-    accuracyStatusTag.textContent = "Precisión: Baja";
-    accuracyStatusTag.className = "accuracy-low";
-    calibrationModal.style.display = "flex";
-    actualizarVisibilidadApp();
-  }
-
-  initGPS();
-  await startCamera();
-
+  // 1. SOLICITAR PERMISOS DE SENSOR DE FORMA INMEDIATA (Crítico para iOS WebKit)
   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const res = await DeviceOrientationEvent.requestPermission();
       if (res === 'granted') {
         window.addEventListener('deviceorientation', handleOrientation, true);
       } else {
-        alert('Permiso denegado para la orientación.');
+        alert('Permiso denegado para los sensores de orientación.');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error al pedir permisos de orientación:', err);
     }
   } else {
+    // Android / Navegadores estándar
     if ('ondeviceorientationabsolute' in window) {
       window.addEventListener('deviceorientationabsolute', handleOrientation, true);
     } else {
       window.addEventListener('deviceorientation', handleOrientation, true);
     }
   }
+
+  // 2. Transición de UI e inicio de subsistemas
+  requestAppFullscreen();
+
+  permissionModal.style.display = 'none';
+  appIniciada = true;
+  actualizarVisibilidadApp();
+
+  // En Android se muestra calibración si la precisión inicial es baja
+  if (!isIOS && !precisionFinalizada && precisionState === 'low') {
+    if (accuracyStatusTag) {
+      accuracyStatusTag.textContent = "Precisión: Baja";
+      accuracyStatusTag.className = "accuracy-low";
+    }
+    if (calibrationModal) {
+      calibrationModal.style.display = "flex";
+    }
+    actualizarVisibilidadApp();
+  }
+
+  // 3. Iniciar GPS y cámara tras haber consumido el gesto de orientación
+  initGPS();
+  await startCamera();
 });
 
 // Selector de mira
