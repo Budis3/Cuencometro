@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cuenca Finder</title>
 
-  <!-- PWA & Metas -->
+  <!-- PWA Manifest & Navegadores Móviles -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0b0f19" />
+
+  <!-- PWA soporte estricto para Apple iOS (Safari) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="CuencaFinder" />
@@ -39,7 +41,7 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración (Fondo 100% Opaco) -->
+  <!-- Modal de Calibración (Solo Android / no-iOS, fondo 100% Opaco) -->
   <div id="calibration-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
@@ -128,5 +130,16 @@
   </div>
 
   <script src="app.js"></script>
+
+  <!-- Registro del Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registrado:', reg.scope))
+          .catch((err) => console.warn('Error al registrar Service Worker:', err));
+      });
+    }
+  </script>
 </body>
 </html>
