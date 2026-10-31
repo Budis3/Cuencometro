@@ -5,30 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cuenca Finder</title>
 
-  <!-- Favicon para navegador -->
-  <link rel="icon" type="image/png" href="logo.png?v=2" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="logo.png?v=3" />
 
   <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json?v=2" />
+  <link rel="manifest" href="manifest.json?v=3" />
   <meta name="theme-color" content="#0b0f19" />
 
-  <!-- PWA para iOS (Safari y Chrome en iOS) -->
+  <!-- PWA iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="CuencaFinder" />
-  <link rel="apple-touch-icon" href="logo.png?v=2" />
+  <link rel="apple-touch-icon" href="logo.png?v=3" />
 
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 
   <!-- Vídeo para la Cámara Trasera -->
   <video id="camera-video" playsinline autoplay muted></video>
 
+  <!-- Banner Promocional de Instalación PWA (Oculto por defecto) -->
+  <div id="pwa-install-banner" class="pwa-banner" style="display: none;">
+    <div class="pwa-banner-content">
+      <img src="logo.png?v=3" class="pwa-banner-icon" alt="Cuenca Finder Icon" />
+      <div class="pwa-banner-texts">
+        <strong class="pwa-banner-title">Instala Cuenca Finder</strong>
+        <p class="pwa-banner-sub" id="pwa-banner-desc">Accede a pantalla completa y úsala sin conexión.</p>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="pwa-install-action-btn" class="pwa-btn-install">Instalar</button>
+      <button id="pwa-dismiss-btn" class="pwa-btn-dismiss" aria-label="Cerrar">✕</button>
+    </div>
+  </div>
+
   <!-- Modal Inicial de Entrada / Permisos (Fondo 100% Opaco) -->
   <div id="permission-modal" class="modal-overlay modal-opaque">
     <div class="brand-hero-standalone">
-      <div class="brand-bg-silhouette"></div>
+      <img src="logo.png?v=3" class="brand-logo-img" alt="Logo Cuenca Finder" />
       <div class="brand-badge-pill">AR &amp; Brújula GPS</div>
       <h1 class="brand-title">Cuenca<br><span class="brand-title-accent">Finder</span></h1>
     </div>
@@ -44,7 +59,7 @@
     </div>
   </div>
 
-  <!-- Modal de Calibración (Solo Android / no-iOS, fondo 100% Opaco) -->
+  <!-- Modal de Calibración (Solo Android / no-iOS) -->
   <div id="calibration-modal" class="modal-overlay modal-opaque" style="display: none;">
     <div class="modal-card modal-calibration-card">
       <div class="icon-cuenca">♾️</div>
@@ -138,7 +153,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker.register('./sw.js?v=4')
           .then((reg) => console.log('Service Worker registrado:', reg.scope))
           .catch((err) => console.warn('Error al registrar Service Worker:', err));
       });
